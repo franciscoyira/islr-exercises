@@ -1,8 +1,8 @@
 ---
 title: "Chapter 2. Statistical Learning"
 output: 
-  github_document: default
   html_notebook: default
+  github_document: default
 ---
 
 # 2.4 Exercises
@@ -12,9 +12,9 @@ output:
 1. For each of parts (a) through (d), indicate whether we would generally expect the performance of a flexible statistical learning method to be
 better or worse than an inflexible method. Justify your answer.
 
-  a. The sample size n is extremely large, and the number of predictors p is small.
-  
-A more flexible method should have better performance, because of the large sample size.
+    a. The sample size n is extremely large, and the number of predictors p is small.
+    
+        A more flexible method should have better performance, because of the large sample size.
 
   b. The number of predictors p is extremely large, and the number of observations n is small.
     
@@ -27,3 +27,71 @@ A more flexible method should have better performance, because of the reduced bi
   d. The variance of the error terms, i.e. $\sigma^2 = Var(\epsilon)$, is extremely high.
   
 Worse performance, because a more flexible method would be more likely to overfit to the errors in the training data.
+
+2. Explain whether each scenario is a classification or regression problem, and indicate whether we are most interested in inference or prediction. Finally, provide *n* and *p*.
+
+    a. We collect a set of data on the top 500 firms in the US. For each firm we record profit, number of employees, industry and the CEO salary. We are interested in understanding which factors affect CEO salary.
+    
+        Regression. Inference. n = 500 (firms in the US). p = 3 (profit, number of employees, and industry salary).
+    
+    b. We are considering launching a new product and wish to know whether it will be a success or a failure. We collect data on 20 similar products that were previously launched. For each product we have recorded whether it was a *success* or *failure*, price charged for the product, marketing budget, competition price, and ten other variables.
+    
+        Classification. Prediction. n = 20 (other products). p = 13 (price charged, marketing budget, competition price, and the 10 other variables).
+      
+    c.  We are interesting in predicting the % change in the US dollar in relation to the weekly changes in the world stock markets. Hence we collect weekly data for all of 2012. For each week we record the % change in the dollar, the % change in the US market, the % change in the British market, and the % change in the German market.
+    
+        Regression. Prediction. n = 52 (weeks of 2012). p = 3 (% changes in US, UK and German markets).
+      
+3. We now revisit the bias-variance decomposition.
+
+    a. Provide a sketch of typical (squared) bias, variance, training error, test error, and Bayes (or irreducible) error curves, on a single plot, as we go from less flexible statistical learning methods towards more flexible approaches. The x-axis should represent the amount of flexibility in the method, and the y-axis should represent the values for each curve. There should be five curves. Make sure to label each one.
+    
+        ![](chap2_exc2.png)
+        
+    b. Explain why each of the five curves has the shape displayed in part (a).
+    
+        Bias goes down when flexibility increases, at the same time that variance goes up. The Bayes error is a constant, the minimum Test MSE we can theoretically achieve. Test MSE is the sum of the Bayes error, the bias and the variance, so this curve is always above the others, and goes downwards when the reductions in the bias (due to higher flexibility) are big enough to compensate the increases in variance, and viceversa. Train MSE can go down below the Bayes error and can even reach zero because, one way or another, all statistical learning methods try to minimize the Train MSE, and as we give them more degrees of freedom, they inevitably move towards that goal.
+        
+4. You will now think of some real-life applications for statistical learning.
+
+    a. Describe three real-life applications in which *classification* might be useful. Describe the response, as well as the predictors. Is the goal of each application inference or prediction? Explain your answer.
+    
+        1. A bank may want to predict which customers are more likely to churn (close their accounts). The response variable would be if the customer has churned or not, and some posible predictors would be the amount of money spent by the customer, the number of transactions, their recency, among others. This could be either a prediction or a inference problem, since the bank may be interested not only in knowing *which* customers are likely to churn, but also *why* (so they can prevent churn).
+        
+        2. There is a soccer match between Team A and Team B, and we want to know which of the 2 teams will win or if both will tie. The response variable is the match result (Team A wins, Team B wins, or it's a tie), and some predictors we would like to use are: possession of the ball in previous matches, number of championships won, which team is local or visitor, and so on. The goal of this application is prediction.
+        
+        3. A one-stop-shop retailer is sending marketing e-mails to their customers, and they would like to send each e-mail only to the customers who will be interested in the respective products promoted. The response variable could be if the customer reads the e-mail or not, and some posible predictors are if the customer has read previous e-mails about the product categories included in the next e-mail, if the customer has bought products of those categories, age, amount of money spent in the retailer, etc.
+        
+    b. Describe three real-life applications in which *regression* might be useful. Describe the response, as well as the predictors. Is the goal of each application inference or prediction? Explain your answer.
+    
+        1. A retailer wants to know how the demand for products will change as they change the price. The goal of this application is inference, and the response variable are the sales of each product (measured in money or units). Some predictors could be the proportion of high income customers for each product, the weight of each product in the customers' monthly expenditure, the price of the product in competitor retailers, and, of course, the change of the price of the product in the same retailer.
+        
+        2. An e-commerce website wants to know how much traffic will come to their page this christmas, so they can provisionate the appropriate web server capacity, avoiding slow downs for their customers. The goal of this application is purely prediction. The response variable would be the number of page views in the chistmas season, and some predictors could be the amount of page views in the previous 3 months, the amount of page views in last year christmas, the economic growth year over year, and the confidence of customers in the future of the economy.
+        
+        3. A researcher would like to know which factors affect the score obtained by students in a standarized math test. This is a inference application, since the researcher would like to give recommendations to improve the scores in the future, not to accurately predict such scores. The response variable is the score of each student in the test, and some explanatory variables could be: study hours per week for each students, years of experience of the teacher, percent of asistance to classes, etc.
+        
+    c. Describe three real-life applications in which cluster analysis might be useful.
+    
+        1. Segmenting customers based on purchase behavior.
+        2. Segmenting app users based on how the use the app.
+        3. Segmenting twitter users based on the topics that they talk about.
+        
+        
+5. What are the advantages and disadvantages of a very flexible (versus a less flexible) approach for regression or classification? Under what circumstances might a more flexible approach be preferred to a less flexible approach? When might a less flexible approach be preferred?
+
+    a. Disadvantages
+    
+        A very flexible model could be more difficult or costly to compute.
+        Also it requieres a lot of data (big samples) to be reliable, since it has higher variance (higher risk of overfitting).
+        It's less interpretable, we may get an accurate prediction, but probably we will not know why the model is doing such prediction for each observation.
+        
+    b. Advantages
+    
+        If the "true model" which generated the data is complex, a more flexible model will make better predictions (will have lower Test MSE).
+        
+    Generally, a more flexible approach is prefered if we have a large `n`, and we suspect that the relationship between the explanatory variables is complex (non-linear). If these conditions doesn't hold, we may want a less flexible approach. 
+        
+        
+6. Describe the differences between a parametric and a non-parametric statistical learning approach. What are the advantages of a parametric approach to regression or classification (as opposed to a non-parametric approach)? What are its disadvantages?
+
+    A parametric approach assumes some functional form to estimate the relationship between the predictors and the response variable. Because of that, the problem is simplified to just estimate the parameters of the assumed functional form. A non-parametric approach allows more flexibility, since it doesn't imposses a pre-defined functional form, but it alsow requieres more data to obtain a reliable estimation. The advantages and disadvantages of non-parametric approaches are pretty much the same as those of the more flexible models.
