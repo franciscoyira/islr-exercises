@@ -1,0 +1,370 @@
+---
+title: "4.6 Lab: Logistic Regression, LDA, QDA, and KNN"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(ISLR)
+library(modelr)
+library(class)
+Smarket <- ISLR::Smarket %>% 
+  rownames_to_column(var = "day") %>% 
+  as_tibble()
+```
+
+```{r}
+summary(Smarket)
+```
+
+```{r}
+Smarket %>% 
+  select_if(is.numeric) %>% 
+  cor()
+```
+
+```{r}
+plot(Smarket[["Volume"]])
+```
+
+
+## 4.6.2 Logistic Regression
+```{r}
+glm_fit <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,
+               data = Smarket,
+               family = binomial)
+summary(glm_fit)
+```
+
+```{r}
+coef(glm_fit)
+```
+
+```{r}
+glm_probs <- predict(glm_fit, type = "response")
+glm_probs[1:10]
+```
+
+```{r}
+contrasts(Smarket[["Direction"]])
+```
+
+```{r}
+Smarket_preds <- 
+  Smarket %>% 
+  add_predictions(glm_fit, type = "response") %>% 
+  mutate(pred_direction = ifelse(pred < 0.5,
+                                 "Down",
+                                 "Up"))
+```
+
+```{r}
+table(Smarket_preds[["Direction"]],
+      Smarket_preds[["pred_direction"]])
+```
+
+```{r}
+mean(Smarket_preds[["Direction"]] == Smarket_preds[["pred_direction"]])
+```
+
+### Implementing separation between test and training data
+```{r}
+Smarket_train <- 
+  Smarket %>% 
+  filter(Year <= 2004)
+
+Smarket_test <- 
+  Smarket %>% 
+  filter(Year == 2005)
+```
+
+```{r}
+glm_fit <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume,
+               data = Smarket_train,
+               family = binomial)
+summary(glm_fit)
+```
+
+Predicting using the test data:
+```{r}
+Smarket_test <-
+  Smarket_test %>% 
+  add_predictions(glm_fit, type = "response") %>% 
+  mutate(pred_direction = ifelse(pred < 0.5,
+                                 "Down",
+                                 "Up"))
+```
+
+```{r}
+mean(Smarket_test[["Direction"]] == Smarket_test[["pred_direction"]])
+```
+
+Now trying with just the two predictors with the strongest relationship with the response variable:
+```{r}
+glm_fit_minimal <- glm(Direction ~ Lag1 + Lag2,
+                       data = Smarket_train,
+                       family = binomial)
+
+Smarket_test <-
+  Smarket_test %>% 
+  add_predictions(glm_fit_minimal, type = "response") %>% 
+  mutate(pred_direction = ifelse(pred < 0.5,
+                                 "Down",
+                                 "Up"))
+
+mean(Smarket_test[["Direction"]] == Smarket_test[["pred_direction"]])
+
+```
+
+Prediction using specific values for `Lag1` and `Lag2`:
+```{r}
+predict(glm_fit_minimal,
+        newdata = tibble(
+          Lag1 = c(1.2, 1.5),
+          Lag2 = c(1.1, -0.8)
+        ),
+        type = "response"
+)
+```
+
+## 4.6.3 Linear Discriminant Analysis
+```{r}
+lda_fit <- MASS::lda(Direction ~ Lag1 + Lag2,
+                     data = Smarket_train)
+lda_fit
+```
+
+```{r}
+plot(lda_fit)
+```
+
+```{r}
+prediction_lda <- 
+  predict(lda_fit, newdata = Smarket_test)
+str(prediction_lda)
+```
+
+```{r}
+lda_class <- prediction_lda$class
+mean(lda_class == Smarket_test[["Direction"]])
+```
+
+```{r}
+sum(prediction_lda[["posterior"]][,1] > 0.5)
+```
+
+```{r}
+table(lda_class, Smarket_test[["Direction"]])
+```
+
+```{r}
+prediction_lda$posterior[1:20,1]
+lda_class[1:20]
+```
+
+```{r}
+Smarket_test %>% 
+  mutate(pred_direction_lda = prediction_lda[["class"]]) %>% 
+  count(pred_direction, pred_direction_lda)
+```
+
+```{r}
+prediction_lda[["posterior"]] %>% summary()
+```
+
+## 4.6.4 Quadratic Discriminant Analysis
+```{r}
+qda_fit <- MASS::qda(Direction ~ Lag1 + Lag2,
+                     data = Smarket_train)
+
+qda_fit
+```
+
+```{r}
+prediction_qda <- predict(qda_fit,
+                          newdata = Smarket_test)
+```
+
+```{r}
+table(prediction_qda[["class"]],
+      Smarket_test[["Direction"]])
+```
+
+```{r}
+mean(prediction_qda[["class"]] == Smarket_test[["Direction"]])
+```
+
+## 4.6.5 K-Nearest Neighbors
+```{r}
+train_x <-  Smarket_train %>% 
+  select(Lag1, Lag2)
+
+test_x <- Smarket_test %>% 
+  select(Lag1, Lag2)
+
+train_y <- Smarket_train %>% 
+  select(Direction)
+```
+
+```{r knn_pred}
+set.seed(1)
+knn_pred <- knn(as.matrix(train_x),
+                as.matrix(test_x),
+                as.matrix(train_y),
+                k = 1)
+```
+
+```{r}
+table(knn_pred, Smarket_test[["Direction"]])
+```
+
+```{r}
+(83+43)/252
+```
+
+Now with K = 3
+```{r}
+set.seed(1)
+knn_pred_k3 <- knn(as.matrix(train_x),
+                   as.matrix(test_x),
+                   as.matrix(train_y),
+                   k = 3)
+```
+
+```{r}
+table(knn_pred_k3, Smarket_test[["Direction"]])
+```
+
+```{r}
+(48+86)/252
+```
+
+## 4.6.6 An Application to Caravan Insurance Data
+```{r}
+summary(Caravan[["Purchase"]])
+```
+
+Scaling the variables and spliting between train and test data:
+```{r}
+Caravan_scaled <- Caravan %>% 
+  mutate_if(is.numeric, scale) %>% 
+  mutate(id = row_number())
+
+Caravan_test <- Caravan_scaled %>% 
+  filter(id <= 1000) %>% 
+  select(-id)
+
+Caravan_train <- Caravan_scaled %>% 
+  filter(id > 1000) %>% 
+  select(-id)
+```
+
+Subsetting to get the inputs to the `knn` function.
+```{r}
+train_x <-  Caravan_train %>% 
+  select(-Purchase)
+
+test_x <- Caravan_test %>% 
+  select(-Purchase)
+
+train_y <- Caravan_train %>% 
+  select(Purchase)
+```
+
+Set seed for replicability and obtaining the predictions (with k = 1)
+```{r}
+set.seed(1)
+knn_pred_caravan <- knn(as.matrix(train_x),
+                        as.matrix(test_x),
+                        as.matrix(train_y),
+                        k = 1)
+```
+
+The predictions are correct 87.2% of the time (TP + TN)/(P + N)
+```{r}
+mean(knn_pred_caravan == Caravan_test[["Purchase"]])
+```
+
+But a "dumb" model which always predict that the customer would not purchase insurance would have 94.1% accuracy.
+```{r}
+mean(Caravan_test[["Purchase"]] == "No")
+```
+
+But how well does our model do in terms of precision? i.e. TP / (TP + FP).
+```{r}
+table(knn_pred_caravan, Caravan_test[["Purchase"]])
+```
+
+```{r}
+9/(68+9)
+```
+
+It gets an 11.6%, which is almost twice as we would get using a random guess (not bad). Let's see if we can get better results by increasing the `k` parameter:
+```{r}
+set.seed(1)
+knn_pred_caravan_k3 <- knn(as.matrix(train_x),
+                           as.matrix(test_x),
+                           as.matrix(train_y),
+                           k = 3)
+
+table(knn_pred_caravan_k3, Caravan_test[["Purchase"]])
+```
+
+With k = 3 we get 20% precision, a threefold increase versus random guess.
+```{r}
+5/(20+5)
+```
+
+```{r}
+set.seed(1)
+knn_pred_caravan_k5 <- knn(as.matrix(train_x),
+                           as.matrix(test_x),
+                           as.matrix(train_y),
+                           k = 5)
+
+table(knn_pred_caravan_k5, Caravan_test[["Purchase"]])
+```
+
+```{r}
+4/(11+4)
+```
+
+Now with k = 5 we have almost five times more precision than with random guessing. However, the recall or sensitivity decreases a little versus the k = 3 model.
+
+Now let's see how well logistic regression works with this data:
+```{r}
+glm_caravan <- glm(Purchase ~ .,
+                   data = Caravan_train,
+                   family = "binomial")
+
+glm_pred_caravan <- predict(glm_caravan, Caravan_test, type = "response")
+
+glm_pred_05cutoff <- ifelse(glm_pred_caravan > 0.5,
+                            "Yes",
+                            "No")
+
+glm_pred_025cutoff <- ifelse(glm_pred_caravan > 0.25,
+                            "Yes",
+                            "No")
+```
+
+
+```{r}
+table(glm_pred_05cutoff, Caravan_test[["Purchase"]])
+```
+
+With a 0.5 cutoff we get a precision of 0%, not good.
+
+```{r}
+table(glm_pred_025cutoff, Caravan_test[["Purchase"]])
+
+```
+```{r}
+11/(22+11)
+```
+
+But with a cut-off of 0.25 we obtain the best result yet: 33% precision.
