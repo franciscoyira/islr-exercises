@@ -1,0 +1,183 @@
+---
+title: "5.3 Lab: Cross-Validation and the Bootstrap"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ISLR)
+library(modelr)
+library(boot)
+set.seed(1)
+```
+
+## 5.3.1 The Validation Set Approach
+```{r}
+train_auto <- 
+  Auto %>% 
+  sample_n(size = 196)
+
+test_auto <- 
+  Auto %>% 
+  anti_join(train_auto)
+
+lm_auto <- lm(mpg ~ horsepower, data = train_auto)
+
+test_auto %>% 
+  add_predictions(lm_auto) %>% 
+  mutate(sq_error = (mpg - pred)^2) %>% 
+  summarise(mean(sq_error))
+```
+
+Trying with polinomial regressions:
+```{r}
+test_eror_poly_lm <- function(grade_poly) {
+  lm_n_auto <- lm(mpg ~ poly(horsepower, grade_poly), data = train_auto)
+
+test_auto %>% 
+  add_predictions(lm_n_auto) %>% 
+  mutate(sq_error = (mpg - pred)^2) %>% 
+  summarise(mean(sq_error))
+}
+```
+
+```{r}
+test_eror_poly_lm(2)
+```
+
+```{r}
+test_eror_poly_lm(3)
+```
+
+Using a different test/train split (to see how the test error changes):
+```{r}
+set.seed(2)
+
+train_auto <- 
+  Auto %>% 
+  sample_n(size = 196)
+
+test_auto <- 
+  Auto %>% 
+  anti_join(train_auto)
+```
+
+```{r}
+test_eror_poly_lm(1)
+```
+
+```{r}
+test_eror_poly_lm(2)
+```
+
+```{r}
+test_eror_poly_lm(3)
+```
+
+## 5.3.2 Leave-One-Out Cross-Validation
+Estimating the test error with LOOCV in linear regression: 
+```{r}
+glm_auto <- glm(mpg ~ horsepower, data = Auto)
+
+cv_err <- cv.glm(Auto, glm_auto)
+
+cv_err[["delta"]]
+```
+
+Repeating for more complex polynomial fits:
+```{r}
+loocv_error_poly <- function(n){
+  glm_auto <- glm(mpg ~ poly(horsepower, n), data = Auto)
+
+  cv_err <- cv.glm(Auto, glm_auto)
+  
+  cv_err[["delta"]][[1]]
+}
+
+map_dbl(1:5, loocv_error_poly)
+```
+
+We see a sharp decrease from linear fit to quadratic fit, but not so much in cubic fit and beyond.
+
+## 5.3.3 k-Fold Cross-Validation
+
+```{r}
+set.seed(17)
+k10_error_poly <- function(n){
+  glm_auto <- glm(mpg ~ poly(horsepower, n), data = Auto)
+
+  cv_err_10 <- cv.glm(Auto, glm_auto, K = 10)
+  
+  cv_err_10[["delta"]][[1]]
+}
+
+map_dbl(1:10, k10_error_poly)
+```
+
+Note: the two numbers associated with `delta` are essentially the same when LOOCV is performed. When we instead perform k-fold CV, then the two numbers associated with `delta` differ slightly. The first is the standard k-fold CV estimate, and the second is a bias corrected version.
+
+## 5.3.4 The Bootstrap
+
+First we create a function to compute the alpha statistic:
+```{r}
+alpha_fn <- function (data, index){
+  X <- data$X[index]
+  Y <- data$Y[index]
+  
+  (var(Y)-cov(X,Y))/(var(X)+var(Y) -2*cov(X,Y))
+}
+```
+
+Then we perform bootstrap with the `boot` function:
+```{r}
+boot(Portfolio, alpha_fn, R=1000)
+```
+
+Comparing the standard errors of coefficients estimated by bootstrap vs. estimated with `lm()`
+```{r}
+coefs_boot <- function (data, index) {
+  coef(lm(mpg∼horsepower , data = data , subset = index))
+}
+
+coefs_boot(Auto, 1:392)
+```
+
+```{r}
+coefs_boot(Auto, sample(1:392, 392, replace = TRUE))
+```
+
+```{r}
+coefs_boot(Auto, sample(1:392, 392, replace = TRUE))
+```
+
+```{r}
+boot(Auto, coefs_boot, R = 10000)
+```
+
+```{r}
+lm(mpg ∼ horsepower, data = Auto) %>% summary()
+```
+
+The bootstrap estimate for coeffcients std. errors is slightly higher than the `lm()` estimate. In fact, the bootstrap estimate is more accurate, because it doesn't rely on the linear model asumptions.
+
+Now let's see the difference in estimate when using a quadratic model (which better fits this data.)
+```{r}
+coefs_boot_lm2 <- function (data, index) {
+  coef(lm(mpg ∼ horsepower + I(horsepower^2), data = data , subset = index))
+}
+
+set.seed(1)
+
+boot(Auto, coefs_boot_lm2, R = 1000)
+```
+
+```{r}
+lm(mpg ∼ horsepower + I(horsepower^2), data = Auto) %>% summary()
+```
+
+Since the cuadratic model is closer to the true structure of the data, the difference between both estimates for standard errors is smaller.
