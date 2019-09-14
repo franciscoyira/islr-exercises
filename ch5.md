@@ -14,7 +14,7 @@ library(caret)
 single variable calculus, derive (5.6). In other words, prove that \(α\)
 given by (5.6) does indeed minimize \(Var(αX +(1 − α)Y)\).
 
-![](ch5_files\\exc1.png)
+![](ch5_files/exc1.png)
 
 (2) We will now derive the probability that a given observation is part
 of a bootstrap sample. Suppose that we obtain a bootstrap sample from a
@@ -101,7 +101,7 @@ for (i in 1:100000) {
 mean(store)
 ```
 
-    ## [1] 0.63431
+    ## [1] 0.63404
 
 Comment on the results obtained.
 
