@@ -1,0 +1,212 @@
+---
+title: "6.6 Lab 2: Ridge Regression and the Lasso"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(glmnet)
+library(ISLR)
+```
+Now we're going to do ridge and lasso regression using `glmnet::glmnet()`. First, let's clean the missing values.
+
+```{r}
+hitters <- ISLR::Hitters %>% na.omit()
+  
+```
+
+Now assign the response variable and the predictors to matrices `y` and `x`.
+
+```{r}
+y <- hitters[["Salary"]]
+x <- model.matrix(Salary∼., hitters )[,-1]
+```
+
+## 6.6.1 Ridge Regression
+
+When `alpha` argument in `glmnet()` is equal to zero, the function performs a ridge regression.
+```{r}
+grid <- 10^seq(10, -2, length = 100)
+ridge_mod <- glmnet(x, y, alpha = 0, lambda = grid)
+```
+
+We choose to compute the ridge regression using a range of lambda values that goes from 10^10 (very close to the null model, including only the intercept) to 10^(-2) (very close to the full OLS model).
+
+`glmnet()` standarized the variables by default, but we can change that with `standarize = FALSE`.
+
+The output is a matrix of coeficients (rows) by each lambda (column).
+```{r}
+dim(coef(ridge_mod))
+```
+
+Checking differences in coeficients and $\ell_2$ norm among different values of lambda.
+
+First with $\lambda = 11498$
+```{r}
+ridge_mod[["lambda"]][50]
+```
+
+```{r}
+coef(ridge_mod, )[, 50]
+```
+
+```{r}
+coef(ridge_mod)[ -1 ,50]^2 %>% sum() %>% sqrt()
+```
+
+Now with $\lambda = 705$:
+```{r}
+ridge_mod[["lambda"]][60]
+```
+
+```{r}
+coef(ridge_mod)[, 60]
+```
+
+```{r}
+coef(ridge_mod)[-1, 60]^2 %>% sum() %>% sqrt()
+```
+
+The coefficients tend to be larger with a lower value of lambda (although some of them can increase their value).
+
+With `predict()` we can recalculate the coefficients for new values of lambda.
+```{r}
+predict(ridge_mod, s = 50, type = "coefficients") %>% as_vector()
+```
+
+### Split between Train and Test
+```{r}
+set.seed(1)
+train_vec <- sample(1:nrow(x), nrow(x)/2)
+test_vec <- -train_vec
+y_test <- y[test_vec]
+```
+
+Fit ridge regression on training data, and evaluate MSE in test data, with lambda = 4.
+```{r}
+ridge_train_mod <- glmnet(x[train_vec, ], y[train_vec],
+                          alpha = 0, lambda = grid,
+                          thresh = 1e-12)
+
+ridge_pred <- predict(ridge_train_mod, s = 4, newx = x[test_vec, ])
+
+mean((ridge_pred-y_test)^2)
+```
+
+Exploring the MSE of the null model (just the intercept), i.e. predicting the mean of the training data set
+```{r}
+mean((mean(y[train_vec]) - y_test)^2)
+```
+
+It is very similar to fitting a ridge regression with very large lambda:
+```{r}
+ridge_pred_large <- 
+  predict(ridge_train_mod, s = 1e10, newx = x[test_vec, ])
+
+mean((ridge_pred_large-y_test)^2)
+```
+
+Checking if performing ridge regression with lambda = 4 is better than just doing OLS.
+```{r}
+ridge_pred_zero <- 
+  predict(ridge_train_mod, s = 0, newx = x[test_vec, ])
+
+mean((ridge_pred_zero-y_test)^2)
+```
+
+Checking that the coefficients are the same between unpenalized LS and ridge with lambda = 0.
+```{r}
+lm(y ~ x, subset = train_vec)
+```
+
+```{r}
+predict(ridge_train_mod, s = 0, exact = TRUE,
+        type = "coefficients",
+        x = x[train_vec, ], y = y[train_vec])[1:20, ]
+```
+
+(If we want to run an unpenalized LS model we're better off using `lm()` because it provides a more useful output).
+
+### Cross-validation to choose lambda
+```{r}
+set.seed(1989)
+
+cv_out <- cv.glmnet(x[train_vec, ], y[train_vec],
+                    alpha = 0, nfold = 10)
+
+plot(cv_out)
+```
+
+The output tell us which is the best value for lambda.
+```{r}
+best_lambda <- cv_out[["lambda.min"]]
+best_lambda
+```
+
+Now let's use that value to predict `y_test` and check the MSE:
+```{r}
+ridge_pred_min <- predict(ridge_mod, s = best_lambda, newx = x[test_vec, ])
+
+mean((ridge_pred_min - y_test)^2)
+```
+
+This is a lower MSE than when we used lambda = 4.
+
+Now let's estimate the coefficients using lambda = 141 on the full dataset.
+```{r}
+out <- glmnet(x, y, alpha = 0)
+predict(out, s = best_lambda, type = "coefficients")[1:20, ]
+```
+
+None of the coefficients are zero because the ridge doesn´t perform variable selection (it just shrinks the values).
+
+## 6.6.2 The Lasso
+
+It's the same as the ridge regression, but using `alpha = 1`. 
+```{r}
+lasso_mod <- glmnet(x[train_vec, ], y[train_vec], alpha = 1,
+                    lambda = grid)
+
+plot(lasso_mod)
+```
+
+Now we perform cross validation to find the best value of lambda.
+```{r}
+set.seed(1989)
+cv_out_lasso <- cv.glmnet(x[train_vec, ], y[train_vec],
+                          alpha = 1, nfolds = 10)
+
+plot(cv_out_lasso)
+```
+
+```{r}
+best_lambda_lasso <- cv_out_lasso[["lambda.min"]]
+
+lasso_pred <- predict(lasso_mod,
+                      s = best_lambda_lasso,
+                      newx = x[test_vec, ])
+
+# MSE
+mean((lasso_pred - y_test)^2)
+```
+
+This is a bit higher than the MSE obtained with the ridge regression and its optimal lambda.
+
+Now let's estimate the coefficientes using the full data and the best lambda for the lasso.
+```{r}
+out_lasso <- glmnet(x, y, alpha = 1, lambda = best_lambda_lasso)
+lasso_coef <- predict(out_lasso, 
+                      type = "coefficient", 
+                      s = best_lambda_lasso)[1:20, ]
+lasso_coef
+```
+
+```{r}
+lasso_coef[lasso_coef != 0]
+```
+
+The lasso, as expected, did perform feature selection by setting some coefficients to zero.
