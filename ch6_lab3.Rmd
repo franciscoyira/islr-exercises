@@ -1,0 +1,94 @@
+---
+title: "6.7 Lab 3: PCR and PLS Regression"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(pls)
+library(ISLR)
+
+# Removing missing values from Hitters dataset
+hitters <- ISLR::Hitters %>% na.omit()
+```
+
+## 6.7.1 Principal Components Regression
+
+First we apply PCR to predict `Salary`
+```{r}
+set.seed(2)
+pcr_fit <- pcr(Salary ~ .,
+  data = hitters, scale = TRUE,
+  validation = "CV"
+)
+
+summary(pcr_fit)
+```
+
+Also one can plot the cross-validation scores (MSE in this case):
+```{r}
+validationplot(pcr_fit, val.type = "MSEP")
+```
+
+The minimum MSE is obtained when we use M = 16 components. However, the CV MSE is roughly equal from M = 1 and upwards, so a model with just one component might suffice.
+
+Now we can perform PCR on the training data and evaluate the test performance:
+```{r}
+set.seed(1)
+hitters_train <- hitters %>% 
+  sample_frac(size = 0.5)
+
+hitters_test <- hitters %>% 
+  anti_join(hitters_train)
+
+pcr_fit_train <- pcr(Salary ~ ., data = hitters_train, scale = TRUE,
+                     validation = "CV")
+
+validationplot(pcr_fit_train, val.type = "MSEP")
+```
+
+```{r}
+pcr_pred <- hitters_test %>% 
+  select(-Salary) %>% 
+  predict(pcr_fit_train, ., ncomp = 5)
+
+y_test <- hitters_test %>% pull(Salary)
+
+mean((pcr_pred - y_test)^2)
+```
+
+We finally fit PCR on the full data set, using M = 5 (selected from the PCR on training data):
+```{r}
+pcr_fit_full <- pcr(Salary ~ ., data = hitters, scale = TRUE, ncomp = 5)
+summary(pcr_fit_full)
+```
+
+## 6.7.2 Partial Least Squares
+
+```{r}
+set.seed(1)
+pls_fit <- plsr(Salary ~ ., data = hitters_train,
+                scale = TRUE, validation = "CV")
+
+summary(pls_fit)
+```
+
+In this case, the lowest CV error ocurrs with M = 1. Now we can evaluate the test MSE:
+```{r}
+pls_pred <- hitters_test %>% 
+  select(-Salary) %>% 
+  predict(pls_fit, ., ncomp = 1)
+
+mean((pls_pred - y_test)^2)
+```
+
+Finally we perform PLS on the full data, with M = 1.
+```{r}
+pls_fit_full <- plsr(Salary ~ ., data = hitters, scale = TRUE, ncomp = 1)
+summary(pls_fit_full)
+```
+
