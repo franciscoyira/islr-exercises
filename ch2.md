@@ -4,20 +4,6 @@ Chapter 2. Statistical Learning
 ``` r
 knitr::opts_chunk$set(warning = FALSE, message = FALSE)
 library(tidyverse)
-```
-
-    ## -- Attaching packages ------------------------------------------------ tidyverse 1.2.1 --
-
-    ## v ggplot2 3.1.0       v purrr   0.3.2  
-    ## v tibble  2.1.1       v dplyr   0.8.0.1
-    ## v tidyr   0.8.3       v stringr 1.4.0  
-    ## v readr   1.3.1       v forcats 0.4.0
-
-    ## -- Conflicts --------------------------------------------------- tidyverse_conflicts() --
-    ## x dplyr::filter() masks stats::filter()
-    ## x dplyr::lag()    masks stats::lag()
-
-``` r
 library(ISLR)
 ```
 
@@ -25,205 +11,213 @@ library(ISLR)
 
 ## Conceptual
 
-#### 1\. For each of parts (a) through (d), indicate whether we would generally expect the performance of a flexible statistical learning method to be better or worse than an inflexible method. Justify your answer.
+(1) For each of parts (a) through (d), indicate whether we would
+generally expect the performance of a flexible statistical learning
+method to be better or worse than an inflexible method. Justify your
+answer.
 
-1.  The sample size n is extremely large, and the number of predictors p
-    is small.
-    
-    A more flexible method should have better performance, because of
-    the large sample size.
+a. The sample size n is extremely large, and the number of predictors p
+is small.
 
-2.  The number of predictors p is extremely large, and the number of
-    observations n is small.
-    
-    A more flexible method should have worse performance, because the
-    small sample size *n* would lead to a high variance and overfitting.
+A: A more flexible method should have better performance, because of the
+large sample size.
 
-3.  The relationship between the predictors and response is highly
-    non-linear.
-    
-    A more flexible method should have better performance, because of
-    the reduced bias.
+b. The number of predictors p is extremely large, and the number of
+observations n is small.
 
-4.  The variance of the error terms, i.e. \(\sigma^2 = Var(\epsilon)\),
-    is extremely high.
-    
-    Worse performance, because a more flexible method would be more
-    likely to overfit to the errors in the training
-data.
+A: A more flexible method should have worse performance, because the
+small sample size *n* would lead to a high variance and overfitting.
 
-#### 2\. Explain whether each scenario is a classification or regression problem, and indicate whether we are most interested in inference or prediction. Finally, provide *n* and *p*.
+c. The relationship between the predictors and response is highly
+non-linear.
 
-1.  We collect a set of data on the top 500 firms in the US. For each
-    firm we record profit, number of employees, industry and the CEO
-    salary. We are interested in understanding which factors affect CEO
-    salary.
-    
-    Regression. Inference. n = 500 (firms in the US). p = 3 (profit,
-    number of employees, and industry salary).
+A: A more flexible method should have better performance, because of the
+reduced bias.
 
-2.  We are considering launching a new product and wish to know whether
-    it will be a success or a failure. We collect data on 20 similar
-    products that were previously launched. For each product we have
-    recorded whether it was a *success* or *failure*, price charged for
-    the product, marketing budget, competition price, and ten other
-    variables.
-    
-    Classification. Prediction. n = 20 (other products). p = 13 (price
-    charged, marketing budget, competition price, and the 10 other
-    variables).
+d. The variance of the error terms, i.e. \(\sigma^2 = Var(\epsilon)\),
+is extremely high.
 
-3.  We are interesting in predicting the % change in the US dollar in
-    relation to the weekly changes in the world stock markets. Hence we
-    collect weekly data for all of 2012. For each week we record the %
-    change in the dollar, the % change in the US market, the % change in
-    the British market, and the % change in the German market.
-    
-    Regression. Prediction. n = 52 (weeks of 2012). p = 3 (% changes in
-    US, UK and German markets).
+A: Worse performance, because a more flexible method would be more
+likely to overfit to the errors in the training data.
 
-#### 3\. We now revisit the bias-variance decomposition.
+(2) Explain whether each scenario is a classification or regression
+problem, and indicate whether we are most interested in inference or
+prediction. Finally, provide *n* and *p*.
 
-1.  Provide a sketch of typical (squared) bias, variance, training
-    error, test error, and Bayes (or irreducible) error curves, on a
-    single plot, as we go from less flexible statistical learning
-    methods towards more flexible approaches. The x-axis should
-    represent the amount of flexibility in the method, and the y-axis
-    should represent the values for each curve. There should be five
-    curves. Make sure to label each one.
-    
-    ![](chap2_exc2.png)
+a. We collect a set of data on the top 500 firms in the US. For each
+firm we record profit, number of employees, industry and the CEO salary.
+We are interested in understanding which factors affect CEO salary.
 
-2.  Explain why each of the five curves has the shape displayed in part
-    (a).
-    
-    Bias goes down when flexibility increases, at the same time that
-    variance goes up. The Bayes error is a constant, the minimum Test
-    MSE we can theoretically achieve. Test MSE is the sum of the Bayes
-    error, the bias and the variance, so this curve is always above the
-    others, and goes downwards when the reductions in the bias (due to
-    higher flexibility) are big enough to compensate the increases in
-    variance, and viceversa. Train MSE can go down below the Bayes error
-    and can even reach zero because, one way or another, all statistical
-    learning methods try to minimize the Train MSE, and as we give them
-    more degrees of freedom, they inevitably move towards that
-goal.
+A: Regression. Inference. n = 500 (firms in the US). p = 3 (profit,
+number of employees, and industry salary).
 
-#### 4\. You will now think of some real-life applications for statistical learning.
+b. We are considering launching a new product and wish to know whether
+it will be a success or a failure. We collect data on 20 similar
+products that were previously launched. For each product we have
+recorded whether it was a *success* or *failure*, price charged for the
+product, marketing budget, competition price, and ten other variables.
 
-1.  Describe three real-life applications in which *classification*
-    might be useful. Describe the response, as well as the predictors.
-    Is the goal of each application inference or prediction? Explain
-    your answer.
-    
-    1.  A bank may want to predict which customers are more likely to
-        churn (close their accounts). The response variable would be if
-        the customer has churned or not, and some posible predictors
-        would be the amount of money spent by the customer, the number
-        of transactions, their recency, among others. This could be
-        either a prediction or a inference problem, since the bank may
-        be interested not only in knowing *which* customers are likely
-        to churn, but also *why* (so they can prevent churn).
-    
-    2.  There is a soccer match between Team A and Team B, and we want
-        to know which of the 2 teams will win or if both will tie. The
-        response variable is the match result (Team A wins, Team B wins,
-        or it’s a tie), and some predictors we would like to use are:
-        possession of the ball in previous matches, number of
-        championships won, which team is local or visitor, and so on.
-        The goal of this application is prediction.
-    
-    3.  A one-stop-shop retailer is sending marketing e-mails to their
-        customers, and they would like to send each e-mail only to the
-        customers who will be interested in the respective products
-        promoted. The response variable could be if the customer reads
-        the e-mail or not, and some posible predictors are if the
-        customer has read previous e-mails about the product categories
-        included in the next e-mail, if the customer has bought products
-        of those categories, age, amount of money spent in the retailer,
-        etc.
+A: Classification. Prediction. n = 20 (other products). p = 13 (price
+charged, marketing budget, competition price, and the 10 other
+variables).
 
-2.  Describe three real-life applications in which *regression* might be
-    useful. Describe the response, as well as the predictors. Is the
-    goal of each application inference or prediction? Explain your
-    answer.
-    
-    1.  A retailer wants to know how the demand for products will change
-        as they change the price. The goal of this application is
-        inference, and the response variable are the sales of each
-        product (measured in money or units). Some predictors could be
-        the proportion of high income customers for each product, the
-        weight of each product in the customers’ monthly expenditure,
-        the price of the product in competitor retailers, and, of
-        course, the change of the price of the product in the same
-        retailer.
-    
-    2.  An e-commerce website wants to know how much traffic will come
-        to their page this christmas, so they can provisionate the
-        appropriate web server capacity, avoiding slow downs for their
-        customers. The goal of this application is purely prediction.
-        The response variable would be the number of page views in the
-        chistmas season, and some predictors could be the amount of page
-        views in the previous 3 months, the amount of page views in last
-        year christmas, the economic growth year over year, and the
-        confidence of customers in the future of the economy.
-    
-    3.  A researcher would like to know which factors affect the score
-        obtained by students in a standarized math test. This is a
-        inference application, since the researcher would like to give
-        recommendations to improve the scores in the future, not to
-        accurately predict such scores. The response variable is the
-        score of each student in the test, and some explanatory
-        variables could be: study hours per week for each students,
-        years of experience of the teacher, percent of asistance to
-        classes, etc.
+c. We are interesting in predicting the % change in the US dollar in
+relation to the weekly changes in the world stock markets. Hence we
+collect weekly data for all of 2012. For each week we record the %
+change in the dollar, the % change in the US market, the % change in the
+British market, and the % change in the German market.
 
-3.  Describe three real-life applications in which cluster analysis
-    might be useful.
-    
-    1.  Segmenting customers based on purchase behavior.
-    
-    2.  Segmenting app users based on how the use the app.
-    
-    3.  Segmenting twitter users based on the topics that they talk
-        about.
+A: Regression. Prediction. n = 52 (weeks of 2012). p = 3 (% changes in
+US, UK and German markets).
 
-#### 5\. What are the advantages and disadvantages of a very flexible (versus a less flexible) approach for regression or classification? Under what circumstances might a more flexible approach be preferred to a less flexible approach? When might a less flexible approach be preferred?
+(3) We now revisit the bias-variance decomposition.
 
-1.  Disadvantages
-    
-    A very flexible model could be more difficult or costly to compute.
-    Also it requieres a lot of data (big samples) to be reliable, since
-    it has higher variance (higher risk of overfitting). It’s less
-    interpretable, we may get an accurate prediction, but probably we
-    will not know why the model is doing such prediction for each
-    observation.
+a. Provide a sketch of typical (squared) bias, variance, training error,
+test error, and Bayes (or irreducible) error curves, on a single plot,
+as we go from less flexible statistical learning methods towards more
+flexible approaches. The x-axis should represent the amount of
+flexibility in the method, and the y-axis should represent the values
+for each curve. There should be five curves. Make sure to label each
+one.
 
-2.  Advantages
-    
-    If the “true model” which generated the data is complex, a more
-    flexible model will make better predictions (will have lower Test
-    MSE).
-    
-    Generally, a more flexible approach is prefered if we have a large
-    `n`, and we suspect that the relationship between the explanatory
-    variables is complex (non-linear). If these conditions doesn’t hold,
-    we may want a less flexible
-approach.
+![](chap2_exc2.png)
 
-#### 6\. Describe the differences between a parametric and a non-parametric statistical learning approach. What are the advantages of a parametric approach to regression or classification (as opposed to a non-parametric approach)? What are its disadvantages?
+b. Explain why each of the five curves has the shape displayed in part
+(a).
 
-A parametric approach assumes some functional form to estimate the
-relationship between the predictors and the response variable. Because
-of that, the problem is simplified to just estimate the parameters of
-the assumed functional form. A non-parametric approach allows more
-flexibility, since it doesn’t imposses a pre-defined functional form,
-but it alsow requieres more data to obtain a reliable estimation. The
-advantages and disadvantages of non-parametric approaches are pretty
-much the same as those of the more flexible
+A: Bias goes down when flexibility increases, at the same time that
+variance goes up. The Bayes error is a constant, the minimum Test MSE we
+can theoretically achieve. Test MSE is the sum of the Bayes error, the
+bias and the variance, so this curve is always above the others, and
+goes downwards when the reductions in the bias (due to higher
+flexibility) are big enough to compensate the increases in variance, and
+viceversa. Train MSE can go down below the Bayes error and can even
+reach zero because, one way or another, all statistical learning methods
+try to minimize the Train MSE, and as we give them more degrees of
+freedom, they inevitably move towards that goal.
+
+(4) You will now think of some real-life applications for statistical
+learning.
+
+a. Describe three real-life applications in which *classification* might
+be useful. Describe the response, as well as the predictors. Is the goal
+of each application inference or prediction? Explain your answer.
+
+A: 1. A bank may want to predict which customers are more likely to
+churn (close their accounts). The response variable would be if the
+customer has churned or not, and some posible predictors would be the
+amount of money spent by the customer, the number of transactions, their
+recency, among others. This could be either a prediction or a inference
+problem, since the bank may be interested not only in knowing *which*
+customers are likely to churn, but also *why* (so they can prevent
+churn).
+
+2.  There is a soccer match between Team A and Team B, and we want to
+    know which of the 2 teams will win or if both will tie. The response
+    variable is the match result (Team A wins, Team B wins, or it’s a
+    tie), and some predictors we would like to use are: possession of
+    the ball in previous matches, number of championships won, which
+    team is local or visitor, and so on. The goal of this application is
+    prediction.
+
+3.  A one-stop-shop retailer is sending marketing e-mails to their
+    customers, and they would like to send each e-mail only to the
+    customers who will be interested in the respective products
+    promoted. The response variable could be if the customer reads the
+    e-mail or not, and some posible predictors are if the customer has
+    read previous e-mails about the product categories included in the
+    next e-mail, if the customer has bought products of those
+    categories, age, amount of money spent in the retailer, etc.
+
+b. Describe three real-life applications in which *regression* might be
+useful. Describe the response, as well as the predictors. Is the goal of
+each application inference or prediction? Explain your answer.
+
+ANSWER:
+
+1.  A retailer wants to know how the demand for products will change as
+    they change the price. The goal of this application is inference,
+    and the response variable are the sales of each product (measured in
+    money or units). Some predictors could be the proportion of high
+    income customers for each product, the weight of each product in the
+    customers’ monthly expenditure, the price of the product in
+    competitor retailers, and, of course, the change of the price of the
+    product in the same retailer.
+
+2.  An e-commerce website wants to know how much traffic will come to
+    their page this christmas, so they can provisionate the appropriate
+    web server capacity, avoiding slow downs for their customers. The
+    goal of this application is purely prediction. The response variable
+    would be the number of page views in the chistmas season, and some
+    predictors could be the amount of page views in the previous 3
+    months, the amount of page views in last year christmas, the
+    economic growth year over year, and the confidence of customers in
+    the future of the economy.
+
+3.  A researcher would like to know which factors affect the score
+    obtained by students in a standarized math test. This is a inference
+    application, since the researcher would like to give recommendations
+    to improve the scores in the future, not to accurately predict such
+    scores. The response variable is the score of each student in the
+    test, and some explanatory variables could be: study hours per week
+    for each students, years of experience of the teacher, percent of
+    asistance to classes, etc.
+
+c. Describe three real-life applications in which cluster analysis might
+be useful.
+
+ANSWER:
+
+1.  Segmenting customers based on purchase behavior.
+
+2.  Segmenting app users based on how the use the app.
+
+3.  Segmenting twitter users based on the topics that they talk about.
+
+(5) What are the advantages and disadvantages of a very flexible (versus
+a less flexible) approach for regression or classification? Under what
+circumstances might a more flexible approach be preferred to a less
+flexible approach? When might a less flexible approach be preferred?
+
+a. Disadvantages
+
+ANSWER: A very flexible model could be more difficult or costly to
+compute.
+
+Also it requieres a lot of data (big samples) to be reliable, since it
+has higher variance (higher risk of overfitting).
+
+It’s less interpretable, we may get an accurate prediction, but probably
+we will not know why the model is doing such prediction for each
+observation.
+
+b. Advantages
+
+ANSWER: If the “true model” which generated the data is complex, a more
+flexible model will make better predictions (will have lower Test MSE).
+
+Generally, a more flexible approach is prefered if we have a large `n`,
+and we suspect that the relationship between the explanatory variables
+is complex (non-linear). If these conditions doesn’t hold, we may want a
+less flexible approach.
+
+(6) Describe the differences between a parametric and a non-parametric
+statistical learning approach. What are the advantages of a parametric
+approach to regression or classification (as opposed to a non-parametric
+approach)? What are its disadvantages?
+
+ANSWER: A parametric approach assumes some functional form to estimate
+the relationship between the predictors and the response variable.
+Because of that, the problem is simplified to just estimate the
+parameters of the assumed functional form. A non-parametric approach
+allows more flexibility, since it doesn’t imposses a pre-defined
+functional form, but it alsow requieres more data to obtain a reliable
+estimation. The advantages and disadvantages of non-parametric
+approaches are pretty much the same as those of the more flexible
 models.
 
-#### 7\. The table below provides a training data set containing six observations, three predictors, and one qualitative response variable.
+(7) The table below provides a training data set containing six
+observations, three predictors, and one qualitative response variable.
 
 | Obs |  X1 | X2 | X3 | Y     |
 | --: | --: | -: | -: | :---- |
@@ -237,10 +231,8 @@ models.
 Suppose we wish to use this data set to make a prediction for \(Y\) when
 \(X1 = X2 = X3 = 0\) using K-nearest neighbors.
 
-1.  Compute the Euclidean distance between each observation and the test
-    point, \(X1 = X2 = X3 = 0\).
-
-<!-- end list -->
+a. Compute the Euclidean distance between each observation and the test
+point, \(X1 = X2 = X3 = 0\).
 
 ``` r
 distance_to_p1 <- function(x1, x2, x3) {
@@ -261,30 +253,31 @@ df1 %>%
     ## 5     5    -1     0     1 Green     1.41
     ## 6     6     1     1     1 Red       1.73
 
-2.  What is our prediction with \(K = 1\)? Why?
-    
-    Green, since observation n°5 is Green and is their closest neighbor.
+b. What is our prediction with \(K = 1\)? Why?
 
-3.  What is our prediction with \(K = 3\)? Why?
-    
-    Red, because 2 of their 3 closest neighbors are red.
+ANSWER: Green, since observation n°5 is Green and is their closest
+neighbor.
 
-4.  If the Bayes decision boundary in this problem is highly nonlinear,
-    then would we expect the *best* value for \(K\) to be large or
-    small? Why?
-    
-    Small. If the Bayes decision boundary is highly nonlinear, then more
-    flexibility in our estimation is desired, and low values for K
-    provide more
-flexibility.
+c. What is our prediction with \(K = 3\)? Why?
+
+ANSWER: Red, because 2 of their 3 closest neighbors are red.
+
+d. If the Bayes decision boundary in this problem is highly nonlinear,
+then would we expect the *best* value for \(K\) to be large or small?
+Why?
+
+ANSWER: Small. If the Bayes decision boundary is highly nonlinear, then
+more flexibility in our estimation is desired, and low values for K
+provide more flexibility.
 
 ## Applied
 
-#### 8\. This exercise relates to the `College` data set, which can be found in the file `College.csv`. It contains a number of variables for 777 different universities and colleges in the US. Descriptions of the variables can be found on page 54 of the book.
+(8) This exercise relates to the `College` data set, which can be found
+in the file `College.csv`. It contains a number of variables for 777
+different universities and colleges in the US. Descriptions of the
+variables can be found on page 54 of the book.
 
-1.  Read the data into `R`.
-
-<!-- end list -->
+a. Read the data into `R`.
 
 ``` r
 (college <- read_csv("College.csv"))
@@ -317,8 +310,7 @@ college <- remove_rownames(college) %>%
 ```
 
 Use the `summary()` function to produce a numerical summary of the
-variables in the data
-    set.
+variables in the data set.
 
 ``` r
 summary(college)
@@ -426,7 +418,8 @@ hist(college$PhD, breaks = 40)
 
 ![](ch2_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
-#### 9\. This exercise involves the `Auto` data set studied in the lab. Make sure that the missing values have been removed from the data.
+(9) This exercise involves the `Auto` data set studied in the lab. Make
+sure that the missing values have been removed from the data.
 
 ``` r
 Auto <- as_tibble(ISLR::Auto)
@@ -436,7 +429,7 @@ is.na(Auto) %>% mean()
 
     ## [1] 0
 
-##### a. Which of the predictors are quantitative, and which are qualitative?
+a. Which of the predictors are quantitative, and which are qualitative?
 
 ``` r
 str(Auto)
@@ -455,7 +448,7 @@ str(Auto)
 
 All of them are quantitative, except the name.
 
-##### b. What is the *range* of each quantitative predictor?
+b. What is the *range* of each quantitative predictor?
 
 ``` r
 Auto %>% 
@@ -487,7 +480,8 @@ Auto %>%
     ## $origin
     ## [1] 1 3
 
-##### c. What is the mean and standard deviation of each quantitative predictor?
+c. What is the mean and standard deviation of each quantitative
+predictor?
 
 ``` r
 Auto %>% 
@@ -589,7 +583,9 @@ Alternative using list-columns to find `mean` and `sd`:
     ## 7 year         <dbl [392]>   76.0    3.68 
     ## 8 origin       <dbl [392]>    1.58   0.806
 
-##### d. Now remove the 10th through 85th observations. What is the range, mean, and standard deviation of each predictor in the subset of the data that remains?
+d. Now remove the 10th through 85th observations. What is the range,
+mean, and standard deviation of each predictor in the subset of the data
+that remains?
 
 ``` r
 summary_mean_sd_range <- function(x) {
@@ -620,7 +616,10 @@ summary_mean_sd_range(Auto_filtered)
     ## 7 year         <dbl [316]>   77.1    3.11    70     82  
     ## 8 origin       <dbl [316]>    1.60   0.820    1      3
 
-##### e. Using the full data set, investigate the predictors graphically, using scatterplots or other tools of your choice. Create some plots highlighting the relationships among the predictors. Comment on your findings.
+e. Using the full data set, investigate the predictors graphically,
+using scatterplots or other tools of your choice. Create some plots
+highlighting the relationships among the predictors. Comment on your
+findings.
 
 ``` r
 Auto %>% 
@@ -648,8 +647,7 @@ ggplot(Auto, aes(as.factor(year), weight)) +
 
 ![](ch2_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
 
-¿Maybe both variables are
-correlated?
+¿Maybe both variables are correlated?
 
 ``` r
 ggplot(Auto, aes(mpg, weight, color = as.factor(cut_width(year, width = 4)))) +
@@ -661,25 +659,28 @@ ggplot(Auto, aes(mpg, weight, color = as.factor(cut_width(year, width = 4)))) +
 
 The greater efficiency in modern cars is partly due to the fact that
 they weigh less, but even keeping the weight constant, modern cars are
-more efficient (in miles per gallon) than older
-cars.
+more efficient (in miles per gallon) than older cars.
 
-##### f. Suppose that we wish to predict gas mileage (`mpg`) on the basis of the other variables. Do your plots suggest that any of the other variables might be useful in predicting `mpg`? Justify your answer.
+f. Suppose that we wish to predict gas mileage (`mpg`) on the basis of
+the other variables. Do your plots suggest that any of the other
+variables might be useful in predicting `mpg`? Justify your answer.
 
-``` 
-Yes. As seen above, `year` and  `weight` should be useful variables to predict `mpg`. Also, as seen in the plots produced by `pairs()`, `displacement`, `horsepower` and `acceleration` should also have good predictive power over `mpg`.
-    
-```
+ANSWER: Yes. As seen above, `year` and `weight` should be useful
+variables to predict `mpg`. Also, as seen in the plots produced by
+`pairs()`, `displacement`, `horsepower` and `acceleration` should also
+have good predictive power over `mpg`.
 
-#### 10\. This exercise involves the `Boston` data set, from the `MASS` package.
+(10) This exercise involves the `Boston` data set, from the `MASS`
+package.
 
-##### a. Load the `Boston` data set.
+a. Load the `Boston` data set.
 
 ``` r
 Boston <- as_tibble(MASS::Boston)
 ```
 
-##### b. Make some pairwise scatterplots of the predictors (columns) in this data set. Describe your findings.
+b. Make some pairwise scatterplots of the predictors (columns) in this
+data set. Describe your findings.
 
 ``` r
 pairs(Boston)
@@ -695,16 +696,23 @@ Some relationships/correlations we can find in the data:
     cheap ones.
   - Median value of homes increases as the number of rooms increases.
   - Median value of home decreases when there is more contamination
-    (measured as nitrogen oxides
-concentration).
+    (measured as nitrogen oxides concentration).
 
-##### c. Are any of the predictors associated with per capita crime rate? If so, explain the relationship.
+c. Are any of the predictors associated with per capita crime rate? If
+so, explain the relationship.
 
-    Yes. Median value of houses is negatively correlated with crime rates (maybe people are less willing to pay for homes in high crime sectors). Also, there is a positive correlation between crime rates and the proportion of old buildings, and a negative correltation with the distance to employment centers (areas located further away from employment centers have less crime).
+ANSWER: Yes. Median value of houses is negatively correlated with crime
+rates (maybe people are less willing to pay for homes in high crime
+sectors). Also, there is a positive correlation between crime rates and
+the proportion of old buildings, and a negative correltation with the
+distance to employment centers (areas located further away from
+employment centers have less crime).
 
-##### d. Do any of the suburbs of Boston appear to have particularly high crime rates? Tax rates? Pupil-teacher ratios? Comment on the range of each predictor.
+d. Do any of the suburbs of Boston appear to have particularly high
+crime rates? Tax rates? Pupil-teacher ratios? Comment on the range of
+each predictor.
 
-    First we obtain the ranges (min and max) for each of these variables:
+First we obtain the ranges (min and max) for each of these variables:
 
 ``` r
 Boston %>% 
@@ -723,10 +731,9 @@ Boston %>%
     other end, some have a crime rate of almost 90.
   - Property tax rates goes from $187 (per $10,000) up to $711 in the
     heaviest taxed zone.
-  - Pupil-teacher ratio: fluctuates between 12.6 and
-22.
+  - Pupil-teacher ratio: fluctuates between 12.6 and 22.
 
-##### e. How many of the suburbs in this data set bound the Charles river?
+e. How many of the suburbs in this data set bound the Charles river?
 
 ``` r
 Boston %>% 
@@ -739,7 +746,8 @@ Boston %>%
     ##   <int>
     ## 1    35
 
-##### f. What is the median pupil-teacher ratio among the towns in this data set?
+f. What is the median pupil-teacher ratio among the towns in this data
+set?
 
 ``` r
 Boston %>% 
@@ -751,7 +759,10 @@ Boston %>%
     ##            <dbl>
     ## 1           19.0
 
-##### g. Which suburb of Boston has lowest median value of owner occupied homes? What are the values of the other predictors for that suburb, and how do those values compare to the overall ranges for those predictors? Comment on your findings.
+g. Which suburb of Boston has lowest median value of owner occupied
+homes? What are the values of the other predictors for that suburb, and
+how do those values compare to the overall ranges for those predictors?
+Comment on your findings.
 
     These are the suburbs with lowest median value of houses.
 
@@ -805,10 +816,11 @@ Remarkable facts about the suburbus with the lowest median value:
   - Very close to employment centers.
   - High property tax rate.
   - High pupil-teacher ratio (few teachers for many pupils).
-  - One of them is the zone with highest proportion of black
-population.
+  - One of them is the zone with highest proportion of black population.
 
-##### h. In this data set, how many of the suburbs average more than seven rooms per dwelling? More than eight rooms per dwelling? Comment on the suburbs that average more than eight rooms per dwelling.
+h. In this data set, how many of the suburbs average more than seven
+rooms per dwelling? More than eight rooms per dwelling? Comment on the
+suburbs that average more than eight rooms per dwelling.
 
 ``` r
 Boston %>% 
@@ -853,7 +865,7 @@ Boston %>%
     ## 13 lstat   <dbl [13]>   4.31    1.37     2.47     7.44 
     ## 14 medv    <dbl [13]>  44.2     8.09    21.9     50
 
-Suburbus with 8 or more average rooms per dwelling have:
+Suburbs with 8 or more average rooms per dwelling have:
 
   - Less crime than average.
   - Less proportion of acres with non-retail business.
