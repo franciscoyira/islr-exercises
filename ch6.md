@@ -1,0 +1,272 @@
+6.8 Exercises
+================
+
+## Conceptual
+
+(1) We perform best subset, forward stepwise, and backward stepwise
+selection on a single data set. For each approach, we obtain \(p + 1\)
+models, containing \(0, 1, 2, ..., p\) predictors. Explain your answers:
+
+(a) Which of the three models with k predictors has the smallest
+training RSS?
+
+A: Best subset selection should have the smallest training RSS (or at
+least equal to others methods), because it will check all the
+combinations with k predictors, that is \(\binom nk\) combinations.
+Forward and backward stepwise, instead, will check only a subset of
+those combinations (\(p-k+1\) in forward selection and \(k+1\) in
+backward selection).
+
+(b) Which of the three models with k predictors has the smallest test
+RSS?
+
+A: Again, best subset selection should provide the model with smallest
+test RSS, simply because it checks more combinations of predictors.
+However, since there is chance involved in the test RSS, stepwise could
+provide a model with lower test RSS in some rare cases.
+
+(c) True or False:
+
+i. The predictors in the k-variable model identified by forward stepwise
+are a subset of the predictors in the \((k+1)\)-variable model
+identified by forward stepwise selection.
+
+TRUE
+
+ii. The predictors in the k-variable model identified by backward
+stepwise are a subset of the predictors in the \((k +1)\)-variable model
+identified by backward stepwise selection.
+
+TRUE
+
+iii. The predictors in the k-variable model identified by backward
+stepwise are a subset of the predictors in the \((k +1)\)-variable model
+identified by forward stepwise selection.
+
+FALSE
+
+iv. The predictors in the k-variable model identified by forward
+stepwise are a subset of the predictors in the \((k+1)\)-variable model
+identified by backward stepwise selection.
+
+FALSE
+
+v. The predictors in the k-variable model identified by best subset are
+a subset of the predictors in the \((k +1)\)-variable model identified
+by best subset selection.
+
+FALSE
+
+(2) For parts (a) through (c), indicate which of i. through iv. is
+correct. Justify your answer.
+
+(a) The lasso, relative to least squares, is:
+
+i. More flexible and hence will give improved prediction accuracy when
+its increase in bias is less than its decrease in variance.
+
+ii. More flexible and hence will give improved prediction accuracy when
+its increase in variance is less than its decrease in bias.
+
+iii. Less flexible and hence will give improved prediction accuracy when
+its increase in bias is less than its decrease in variance.
+
+iv. Less flexible and hence will give improved prediction accuracy when
+its increase in variance is less than its decrease in bias.
+
+A: (iii) is correct. Lasso increases bias by introducing a “budget
+restriction” on coefficients that shrinks their value (and even can set
+some of them as zero). This leads to more bias, which is accepted to the
+extent that there is a larger decrease in variance (due to less
+overfitting to the training sample).
+
+(b) Repeat (a) for ridge regression relative to least squares.
+
+A: (iii) is correct. For the same reasons stated for the lasso
+regression (the only difference between the lasso and ridge is the
+“shape” of the constrain on the coefficients).
+
+(c) Repeat (a) for non-linear methods relative to least squares.
+
+A: (ii) is correct. Non-linear methods provide more flexibility than
+least squares, hence they can reduce bias, at the expense of higher
+variance. If the true relationship in the data is non linear, we can
+expect an improvement in prediction accuracy (the reduction in bias will
+be larger than the increase in variance).
+
+(3) Suppose we estimate the regression coefficients in a linear
+regression model by minimizing
+
+![](ch6_files/chapter6_1.png)
+
+for a particular value of s. For parts (a) through (e), indicate which
+of i. through v. is correct. Justify your answer.
+
+(a) As we increase s from 0, the training RSS will:
+
+i. Increase initially, and then eventually start decreasing in an
+inverted U shape.
+
+ii. Decrease initially, and then eventually start increasing in a
+Ushape.
+
+iii. Steadily increase.
+
+iv. Steadily decrease.
+
+v. Remain constant
+
+A: (iv) Steadily decrease. The flexibility of the model increses as
+\(s\) increases, and higher flexibility is always associated with lower
+training RSS.
+
+(b) Repeat (a) for test RSS.
+
+A: (ii) The test RSS will decrease as long as the increase in variance
+(due to higher flexibility) is smaller than the reduction in bias. At
+some point (which depends on the true relationships in the data) the
+trend will invert, because the reduction in bias will no longer offset
+the increase in variance.
+
+(c) Repeat (a) for variance.
+
+A: (iii) Variance always increases as there is more flexibility.
+
+(d) Repeat (a) for (squared) bias.
+
+A: (iv) Bias should decrease, or at least remain constant, as the
+flexibility increases.
+
+(e) Repeat (a) for the irreducible error.
+
+A: (v). The irreducible error doesn’t depend on the flexibility of the
+model.
+
+(4) Suppose we estimate the regression coefficients in a linear
+regression model by minimizing
+
+![](ch6_files/chapter6_2.png)
+
+for a particular value of λ. For parts (a) through (e), indicate which
+of i. through v. is correct. Justify your answer.
+
+(a) As we increase λ from 0, the training RSS will:
+
+i. Increase initially, and then eventually start decreasing in an
+inverted U shape.
+
+ii. Decrease initially, and then eventually start increasing in a
+Ushape.
+
+iii. Steadily increase.
+
+iv. Steadily decrease.
+
+v. Remain constant.
+
+A: (iii) An increase in \(\lambda\) implies a decrease in flexibility
+(model with \(\lambda = 0\) has the same flexibility as OLS, and model
+with \(\lambda = \infty\) is regression with just the intercept). So the
+training RSS will increase as \(\lambda\) increases (and flexibility
+decreases).
+
+(b) Repeat (a) for test RSS.
+
+A: (ii) Lower flexibility has the benefit of reducing variance, at the
+expense of increasing bias. We should expect the reduction in variance
+to offset the increase in bias for a range, reach a minimum in total
+test RSS, and then see the trend reversed.
+
+(c) Repeat (a) for variance.
+
+A: (iv) Variance always decreases as flexibility decreases.
+
+(d) Repeat (a) for (squared) bias.
+
+A: (iii) As \(\lambda\) gets higher, the model is more constrained, so
+the error due to bias increases.
+
+(e) Repeat (a) for the irreducible error.
+
+A: (v). The irreducible error doesn’t depend on the flexibility of the
+model.
+
+(5) It is well-known that ridge regression tends to give similar
+coefficient values to correlated variables, whereas the lasso may give
+quite different coefficient values to correlated variables. We will now
+explore this property in a very simple setting.
+
+Suppose that \(n =2\), \(p =2\), \(x_{11} = x_{12}\),
+\(x_{21} = x_{22}\).Furthermore, suppose that \(y1+y2 = 0\) and
+\(x_{11} +x_{21} =0\) and \(x_{12} + x_{22} = 0\), so that the estimate
+for the intercept in a least squares, ridge regression, or lasso model
+is zero: \(\hat{β}_0 = 0\).
+
+(a) Write out the ridge regression optimization problem in this setting.
+
+![](ch6_files/chapter6_3.png)
+
+(b) Argue that in this setting, the ridge coefficient estimates satisfy
+\(\hat{β}_1 = \hat{β}_2\).
+
+A: We see that the RSS part of the expression depends only on the *sum*
+of both coefficients (not on their individual values). For each value of
+the sum, there are infinite pairs of coefficients that result on that
+number. In this case, since there are two coefficients, those pairs form
+a line on the plane, with slope of minus 45°.
+
+The regularization part of the expression implies that we want the pair,
+inside that line, in which the sum of the squares of the coefficients is
+minimized. Geometrically, this happens in the point of the line which is
+tangent to the smallest circle centered in (0,0). And in this point both
+coefficients have equal value.
+
+![](ch6_files/chapter6_4.png)
+
+(c) Write out the lasso optimization problem in this setting.
+
+![](ch6_files/chapter6_5.png)
+
+(d) Argue that in this setting, the lasso coefficients are not unique —
+in other words, there are many possible solutions to the optimization
+problem in (c). Describe these solutions.
+
+A: Similarly than in the previous case, here the RSS part of the
+expression also imposses that the coefficents must be pairs inside a
+line with slope of -45°. But the regularization part is different, it
+implies that we want pairs in the line for which the sum of their
+absolute values is minimized.
+
+Geometrically, this is as having a square-shaped restriction, centered
+in zero, and rotated in 45° degrees. In this setting, the intersection
+of the line and the border of the restriction is not a point, but a
+whole segment of the line (which contains infinite pairs or solutions).
+
+![](ch6_files/chapter6_6.png)
+
+6.  We will now explore (6.12) and (6.13) further.
+
+(a) Consider (6.12) with \(p = 1\). For some choice of \(y_1\) and
+\(λ > 0\), plot (6.12) as a function of \(β_1\). Your plot should
+confirm that (6.12) is solved by (6.14).
+
+A: Here is the plot for \(y_1 = 5\) and \(\lambda = 1\).
+
+![](ch6_files/chapter6_7.png)
+
+We see that in the minimum \(\beta_1\) is equal to 2.5, instead of 5.
+This confirms the formula given in (6.14): the ridge coefficient is
+equal to the OLS coefficient, divided by \((1 + \lambda)\) (which is 2,
+in this particular case).
+
+(b) Consider (6.13) with \(p = 1\). For some choice of \(y_1\) and
+\(λ> 0\), plot (6.13) as a function of \(β_1\). Your plot should
+confirm that (6.13) is solved by (6.15).
+
+![](ch6_files/chapter6_7b.png)
+
+We see that in the minimum \(\beta_1\) is equal to 4.5, insted of 5 (the
+actual value of \(y\)). This matches the formula given in (6.15), in
+which if \(y_i\) is higher than \(\lambda/2\) (as is the case), then the
+lasso coefficient is equal to \(y_i - \lambda/2\) (5 - 1/2, in this
+particular case).
