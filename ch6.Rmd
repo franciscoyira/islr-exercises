@@ -7,6 +7,17 @@ output:
     md_extensions: -fancy_lists+startnum
 ---
 
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+library(leaps) # for feature selection
+library(glmnet) # for lasso and ridge
+library(ISLR) # for datasets
+library(modelr) # for tidy manipulation of models
+library(pls) # for Principal Components regression
+```
+
+
 ## Conceptual
 
 (1) We perform best subset, forward stepwise, and backward stepwise selection on a single data set. For each approach, we obtain $p + 1$
@@ -181,3 +192,650 @@ We see that in the minimum $\beta_1$ is equal to 2.5, instead of 5. This confirm
 ![](ch6_files/chapter6_7b.png)  
 
 We see that in the minimum $\beta_1$ is equal to 4.5, insted of 5 (the actual value of $y$). This matches the formula given in (6.15), in which if $y_i$ is higher than $\lambda/2$ (as is the case), then the lasso coefficient is equal to $y_i - \lambda/2$ (5 - 1/2, in this particular case).
+
+(7) We will now derive the Bayesian connection to the lasso and ridge regression discussed in Section 6.2.2.
+
+Skipped. Good solution here: https://blog.princehonest.com/stat-learning/ch6/7.html 
+
+## Applied
+
+(8) In this exercise, we will generate simulated data, and will then use this data to perform best subset selection.
+
+(a) Use the `rnorm()` function to generate a predictor $X$ of length
+$n = 100$, as well as a noise vector $\epsilon$ of length $n = 100$.
+
+```{r}
+set.seed(42)
+
+x <- rnorm(100)
+noise <- rnorm(100)
+```
+
+(b) Generate a response vector $Y$ of length $n = 100$ according to the model $Y = β_0 + β_1X + β_2X^2 + β_3X^3 + \epsilon$, where $β_0$, $β_1$, $β_2$,and $β_3$ are constants of your choice:
+
+```{r}
+y <- 1 + 2*x + 0.4*x^2 + 0.17*x^3 + noise
+```
+
+(c) Use the `regsubsets()` function to perform best subset selection in order to choose the best model containing the predictors $X,X^2,...,X^{10}$. What is the best model obtained according to Cp, BIC,and adjusted $R^2$? Show some plots to provide evidence for your answer, and report the coefficients of the best model obtained. 
+
+First we create the dataframe:
+```{r}
+df <- tibble(
+  y = y,
+  x1 = x,
+  x2 = x^2,
+  x3 = x^3,
+  x4 = x^4,
+  x5 = x^5,
+  x6 = x^6,
+  x7 = x^7,
+  x8 = x^8,
+  x9 = x^9,
+  x10 = x^10
+)
+
+df
+```
+
+```{r}
+bestsubset <- regsubsets(x = as.matrix(select(df,-y)),
+                         y = as.matrix(select(df, y))) 
+
+summary(bestsubset)
+```
+
+Now, for each number of predictors, we have the best model. Let's compare the models with different number of predictors:
+```{r}
+summary(bestsubset)[["adjr2"]] %>% plot()
+```
+
+```{r}
+summary(bestsubset)[["adjr2"]] %>% which.max()
+```
+
+```{r}
+summary(bestsubset)[["cp"]] %>% plot()
+```
+
+```{r}
+summary(bestsubset)[["cp"]] %>% which.min()
+```
+
+
+```{r}
+summary(bestsubset)[["bic"]] %>% plot()
+```
+
+```{r}
+summary(bestsubset)[["bic"]] %>% which.min()
+```
+
+Based on Adj-R2 and Cp, the best model is the one with 7 variables. Based on BIC, the best is the one with 5 (both conclusions are wrong, because we generated the data using a model with 3 variables).
+
+The coefficients for the "best" models:
+```{r}
+bestsubset %>% coef(id = 5)
+```
+
+```{r}
+bestsubset %>% coef(id = 7)
+```
+
+(d) Repeat (c), using forward stepwise selection and also using backwards stepwise selection. How does your answer compare to the
+results in (c)?
+
+First we do forward selection:
+```{r}
+forwardselection <- regsubsets(x = as.matrix(select(df, -y)),
+                               y = as.matrix(select(df, y)),
+                               method = "forward") 
+
+summary(forwardselection)
+```
+
+The best models, based on forward selection and chosen by Adj-R2, Cp, and BIC, are as follows:
+```{r}
+forwardmodels <- 
+  tibble(
+    metric = c("adjr2", "cp", "bic"),
+    best_model = c(
+      summary(forwardselection)[["adjr2"]]%>% which.max(),
+      summary(forwardselection)[["cp"]] %>% which.min(),
+      summary(forwardselection)[["bic"]] %>% which.min()
+    )
+  )
+
+forwardmodels
+```
+
+Now with backward selection:
+```{r}
+backwardselection <- regsubsets(x = as.matrix(select(df,-y)),
+                                y = as.matrix(select(df, y)),
+                                method = "backward")
+
+summary(backwardselection)
+```
+
+The best models, based on forward selection and chosen by Adj-R2, Cp, and BIC, are as follows:
+```{r}
+backwardmodels <- 
+  tibble(
+    metric = c("adjr2", "cp", "bic"),
+    best_model = c(
+      summary(backwardselection)[["adjr2"]]%>% which.max(),
+      summary(backwardselection)[["cp"]] %>% which.min(),
+      summary(backwardselection)[["bic"]] %>% which.min()
+    )
+  )
+
+backwardmodels
+```
+
+Unfortunately, none of the feature selection methods was able to find the "true model" used to generate this data.
+
+(e) Now fit a lasso model to the simulated data, again using $X,X^2, ...,X^{10}$ as predictors. Use cross-validation to select the optimal value of λ. Create plots of the cross-validation error as a function of λ. Report the resulting coefficient estimates, and discuss the results obtained.
+
+Using cross validation to select the optimal value of λ.
+
+```{r}
+cv_lasso <-
+  cv.glmnet(
+    x = as.matrix(select(df, -y)),
+    y = as.matrix(select(df, y)),
+    alpha = 1,
+    nfolds = 100
+  )
+
+cv_lasso[["lambda.min"]]
+```
+
+Plot of CV error as function of λ:
+```{r}
+error_vs_lambda <- 
+  tibble(
+    cvm = cv_lasso[["cvm"]],
+    lambdas = cv_lasso[["lambda"]]
+  )
+
+ggplot(data = error_vs_lambda) +
+  geom_line(aes(lambdas, cvm)) +
+  geom_vline(xintercept = cv_lasso[["lambda.min"]], color = "red") +
+  geom_label(x = cv_lasso[["lambda.min"]], 
+             y = 7, 
+             label = round(cv_lasso[["lambda.min"]], 2),
+             color = "red") +
+  labs(y = "Mean of CV error",
+       title = "Choosing lambda in lasso regression")
+```
+
+Obtaining coefficients with the optimal lambda:
+```{r}
+glmnet(
+  x = as.matrix(select(df,-y)),
+  y = as.matrix(select(df, y)),
+  alpha = 1,
+  lambda = cv_lasso[["lambda.min"]]
+) %>% coef()
+```
+
+We see that the lasso does a much better job in selecting the features that are truly part of the data generating process. Also, the coeficient estimates are very close to the true ones (2, 0.4 and 0.17).
+
+(f) Now generate a response vector Y according to the model $Y = β_0 + β_7X^7 + \epsilon$, and perform best subset selection and the lasso. Discuss the results obtained.
+
+```{r}
+df2 <- df %>% 
+  mutate(y = 1 + 2*x7 + noise)
+```
+
+```{r}
+bestsubset2 <- regsubsets(
+  x = as.matrix(select(df2, -y)),
+  y = as.matrix(select(df2, y))
+)
+
+bestmodels2 <- 
+  tibble(
+    metric = c("adjr2", "cp", "bic"),
+    best_model = c(
+      summary(bestsubset2)[["adjr2"]]%>% which.max(),
+      summary(bestsubset2)[["cp"]] %>% which.min(),
+      summary(bestsubset2)[["bic"]] %>% which.min()
+    )
+  )
+
+bestmodels2
+```
+
+```{r}
+summary(bestsubset2)
+```
+
+Now we do feature selection using the lasso:
+```{r}
+cv_lasso2 <-
+  cv.glmnet(
+    x = as.matrix(select(df2, -y)),
+    y = as.matrix(select(df2, y)),
+    alpha = 1,
+    nfolds = 100
+  )
+
+glmnet(
+  x = as.matrix(select(df2,-y)),
+  y = as.matrix(select(df2, y)),
+  alpha = 1,
+  lambda = cv_lasso2[["lambda.min"]]
+) %>% coef()
+```
+
+Again, the lasso comes closer to choosing the features that are part of the true model. However, here it incorrectly picks $X^9$ as predictor, and also estimates an intercept a bit off the true one.
+
+(9) In this exercise, we will predict the number of applications received using the other variables in the `College` data set.
+
+(a) Split the data set into a training set and a test set.
+```{r}
+college_train <- ISLR::College %>% 
+  as_tibble(rownames = "name") %>% 
+  sample_frac(size = 0.5)
+
+college_test <- ISLR::College %>% 
+  as_tibble(rownames = "name") %>% 
+  anti_join(college_train, by = "name")
+```
+
+(b) Fit a linear model using least squares on the training set, and report the test error obtained.
+```{r}
+lm_model <- college_train %>% 
+  select(-name) %>% 
+  lm(Apps ~ ., data = .)
+
+college_test %>% 
+  add_predictions(model = lm_model, var = "Apps_pred") %>% 
+  select(Apps, Apps_pred, everything()) %>% 
+  summarise(test_mse = mean((Apps_pred-Apps)^2))
+```
+
+(c) Fit a ridge regression model on the training set, with λ chosen by cross-validation. Report the test error obtained.
+```{r}
+grid <- c(10^seq(10, -10, length = 300),
+          0)
+
+best_lambda <-
+  cv.glmnet(
+    x = model.matrix(Apps ~ . - name, college_train),
+    y = as.matrix(select(college_train, Apps)),
+    nfold = 300,
+    alpha = 0,
+    lambda = grid
+  )[["lambda.min"]]
+
+ridge_college <-
+  glmnet(
+    x = model.matrix(Apps ~ . - name, college_train),
+    y = college_train[["Apps"]],
+    alpha = 0,
+    lambda = best_lambda,
+    thresh =1e-12
+  )
+
+pred_apps_ridge <-
+  predict.glmnet(ridge_college,
+                 newx = model.matrix(Apps ~ . - name, college_test),
+                 s = best_lambda)
+
+mean((pred_apps_ridge - college_test[["Apps"]])^2)
+```
+
+I don't understand why test MSE in ridge is higher than test MSE with OLS  :(
+
+The coefficients
+```{r}
+predict(ridge_college,
+        type = 'coefficients',
+        s = best_lambda)
+```
+
+(d) Fit a lasso model on the training set, with λ chosen by cross-validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+```{r}
+best_lambda_lasso <-
+  cv.glmnet(
+    x = model.matrix(Apps ~ . - name, college_train),
+    y = as.matrix(select(college_train, Apps)),
+    nfold = 300,
+    alpha = 1,
+    lambda = grid
+  )[["lambda.min"]]
+
+lasso_college <-
+  glmnet(
+    x = model.matrix(Apps ~ . - name, college_train),
+    y = as.matrix(select(college_train, Apps)),
+    alpha = 1,
+    lambda = best_lambda_lasso,
+    thresh =1e-12
+  )
+
+pred_apps_lasso <-
+  predict.glmnet(lasso_college,
+                 newx = model.matrix(Apps ~ . - name, college_test),
+                 s = best_lambda_lasso)
+
+mean((pred_apps_lasso - college_test[["Apps"]])^2)
+```
+
+It is lower than in OLS and ridge :)
+
+The coefficients (using the whole dataset)
+```{r}
+full_lasso_college <-
+  glmnet(
+    x = model.matrix(Apps ~ ., College),
+    y = as.matrix(select(College, Apps)),
+    alpha = 1,
+    lambda = best_lambda_lasso,
+    thresh =1e-12
+  )
+
+predict(full_lasso_college, type = "coefficients",
+        s = best_lambda_lasso)
+```
+
+We see that `perc_alumni` was dropped by the lasso.
+
+(e) Fit a PCR model on the training set, with M chosen by cross-validation. Report the test error obtained, along with the value
+of M selected by cross-validation.
+```{r}
+pcr_college <-
+  pcr(Apps ~ . - name,
+      data = college_train,
+      scale = TRUE,
+      validation = "CV")
+
+summary(pcr_college)
+```
+
+We see that the lowest CV error is achieved when we use all the available componentes (M = 17).
+```{r}
+validationplot(pcr_college,val.type="MSEP")
+```
+
+The lowest CV RMSE happens with M=17. I will pick M=16 since then RMSE is very close to M=17.
+
+Now let's check the test MSE:
+```{r}
+apps_pred_pcr <- 
+  predict(pcr_college, newdata = college_test, ncomp = 16)
+
+mean((apps_pred_pcr - college_test[["Apps"]])^2)
+```
+
+The test MSE is lower than in Lasso, Ridge and linear regression.
+
+(f) Fit a PLS model on the training set, with M chosen by cross-validation. Report the test error obtained, along with the value of M selected by cross-validation.
+```{r}
+pls_college <-
+  plsr(Apps ~ . - name,
+      data = college_train,
+      scale = TRUE,
+      validation = "CV")
+
+summary(pls_college)
+```
+
+```{r}
+validationplot(pls_college,val.type="MSEP")
+```
+
+The lower CV error is achieved with M = 10.
+
+```{r}
+apps_pred_pls <- 
+  predict(pls_college, newdata = college_test, ncomp = 10)
+
+mean((apps_pred_pls - college_test[["Apps"]])^2)
+```
+
+(g) Comment on the results obtained. How accurately can we predict the number of college applications received? Is there much difference among the test errors resulting from these five approaches?
+
+ANSWER: It seems that PCR is the method which can more accurately predict the number of college applications in test data. However, most of the test MSE obtained are roughly similar, and there are not big improvements over the regular linear regression performance. This may suggest that the error of model comes mostly from bias, and not from variance (therefore, methods of dimensionality reduction cannot provide big improvements in error reduction).
+
+R-squared from test data: 93% (very high)
+```{r}
+avg_apps <- mean(college_test[["Apps"]])
+
+1 - mean((college_test[["Apps"]] - apps_pred_pcr)^2)/mean((college_test[["Apps"]] - avg_apps)^2)
+```
+
+(10) We have seen that as the number of features used in a model increases, the training error will necessarily decrease, but the test error may not. We will now explore this in a simulated data set.
+
+(a) Generate a data set with $p =20$ features, $n = 1000$ observations, and an associated quantitative response vector generated according to the model $Y = Xβ + \epsilon$, where $β$ has some elements that are exactly equal to zero.
+```{r}
+set.seed(42)
+df_sim <- 
+  tibble(.rows = 1000) 
+
+for (i in 1:20) {
+  varname <- str_c("X", i)
+  df_sim[[varname]] <- rnorm(1000)
+}
+
+noise <- rnorm(1000)
+
+m_sim <- as.matrix(df_sim)
+
+# Declare coefficients
+betas <- rep(c(1,2,3,0), length.out = 20) %>% as.matrix()
+
+y <- 
+  m_sim %*% betas + noise
+
+df_sim <- df_sim %>% 
+  mutate(y = y,
+         id = row_number())
+```
+
+(b) Split your data set into a training set containing 100 observations and a test set containing 900 observations
+```{r}
+sim_training <- df_sim %>% 
+  sample_n(size = 100)
+
+sim_test <- df_sim %>% 
+  anti_join(sim_training, by = "id")
+```
+
+(c) Perform best subset selection on the training set, and plot the training set MSE associated with the best model of each size.
+```{r}
+sim_bestsubset <- 
+  regsubsets(y ~ . -id, data = sim_training, nvmax = 20)
+
+summary(sim_bestsubset)
+```
+
+```{r}
+sim_best_rss <- summary(sim_bestsubset)[["rss"]]
+
+sim_n_minus_m <- rep(1000, times = 20) - 2:21
+
+sim_best_mse <- sim_best_rss/sim_n_minus_m
+
+plot(sim_best_mse)
+```
+
+```{r}
+which.min(sim_best_mse)
+```
+
+The model with the lowest training MSE is the one with most variables (p = 20).
+
+(e) For which model size does the test set MSE take on its minimum value? Comment on your results. If it takes on its minimum value for a model containing only an intercept or a model containing all of the features, then play around with the way that you are generating the data in (a) until you come up with a scenario in which the test set MSE is minimized for an intermediate model size.
+
+```{r}
+# Model matrix for test data
+sim_test_matrix <- 
+  sim_test %>% model.matrix(y ~ . - id, data = .)
+
+# Create function for obtaing test MSE for each best model
+mse_for_bestsubset <- function(n_vars) {
+  # Extract coefficients for each model size
+  coefs_i <- sim_bestsubset %>% coef(id = n_vars)
+  
+  # Compute Y_predicted
+  pred_i <- sim_test_matrix[, names(coefs_i)] %*% coefs_i
+  
+  # Obtain MSE
+  mse_i <- mean((sim_test[["y"]] - pred_i) ^ 2)
+  
+  mse_i
+}
+
+# Iterate for 1:20 number of variables
+test_mse_best <- 
+  tibble(
+    n_vars = 1:20,
+    test_mse = map_dbl(n_vars, mse_for_bestsubset)
+  )
+
+#Plot
+min_test_mse <- which.min(test_mse_best[["test_mse"]])
+
+ggplot(test_mse_best,
+       aes(n_vars, test_mse)) +
+  geom_line() +
+  geom_vline(xintercept = min_test_mse, color = "red")
+```
+
+The minimum test MSE is achieved in the model with 15 variables (plus the intercept). 
+
+(f) How does the model at which the test set MSE is minimized compare to the true model used to generate the data? Comment on the coefficient values.
+
+ANSWER: In this case, the best subset algorithm correctly chooses a model that includes all the true predictors, and only the true predictors.  
+
+Also, the estimated coefficients are very close to the true ones (used for generating the data).
+
+```{r}
+coef(sim_bestsubset, id = 15)
+```
+
+(g) Create a plot displaying of $\sqrt{\sum_{j=1}^p(\beta_j-\hat{\beta}_j^r)^2}$ for a range of values of $r$, where $\hat{\beta}_j^r$ is the jth coefficient estimate for the best model containing $r$ coefficients. Comment on what you observe. How does this compare to the test MSE plot from (d)?
+```{r}
+# Names of all the variables
+names_betas <- 
+  coef(sim_bestsubset, id = 20) %>% names()
+
+# Create vector with true coefficients + their names
+betas_named <- c(0, as.vector(betas)) %>% 
+  set_names(names_betas)
+
+error_coeffs <- function(r) {
+  zeros <- rep(0, times = 21) %>%
+    set_names(names_betas)
+  
+  coefs_r <-
+    coef(sim_bestsubset, id = r)
+  
+  zeros[names(coefs_r)] <- coefs_r
+  
+  ((betas_named - zeros) ^ 2) %>% sum() %>% sqrt()
+  
+}
+
+test_mse_best <- test_mse_best %>% 
+  mutate(error_coeffs = map_dbl(n_vars, error_coeffs)) 
+
+ggplot(test_mse_best) +
+  geom_line(aes(x = n_vars, y = error_coeffs)) +
+  geom_vline(xintercept = which.min(test_mse_best[["error_coeffs"]]),
+             color = "red")
+```
+
+This result matches what we get in (d), the model that minimizes the MSE in predictions, and also the error coefficient estimates, is the one with r = 15 (i.e. the best model containing 15 coefficients).
+
+(11) We will now try to predict per capita crime rate in the `Boston` data set.
+
+(a) Try out some of the regression methods explored in this chapter, such as best subset selection, the lasso, ridge regression, and PCR. Present and discuss results for the approaches that you consider.
+
+(b) Propose a model (or set of models) that seem to perform well on this data set, and justify your answer. Make sure that you are evaluating model performance using validation set error, crossvalidation, or some other reasonable alternative, as opposed to using training error.
+
+(c) Does your chosen model involve all of the features in the data set? Why or why not?
+
+```{r}
+(boston <- MASS::Boston %>% as_tibble())
+```
+
+First lets split the data into training and test set.
+```{r}
+boston_training <- boston %>% 
+  sample_frac(size = 0.5)
+
+boston_test <- boston %>% 
+  anti_join(boston_training)
+```
+
+Best subset selection:
+```{r}
+crim_mod_best <- 
+  regsubsets(crim ~ ., data = boston_training, nvmax = 13)
+
+summary(crim_mod_best)
+```
+
+Comparing "best subset" models for different number of variables:
+```{r}
+best_sub_models <- 
+  tibble(
+    nvars = 1:13
+  )
+
+boston_test_matrix <- model.matrix(crim ~ ., data = boston_test)
+
+# Function to compute test MSE
+mse_for_bestsubset_boston <- function(n_vars) {
+  # Extract coefficients for each model size
+  coefs_i <- crim_mod_best %>% coef(id = n_vars)
+  
+  # Compute Y_predicted
+  pred_i <- boston_test_matrix[, names(coefs_i)] %*% coefs_i
+  
+  # Obtain MSE
+  mse_i <- mean((boston_test[["crim"]] - pred_i) ^ 2)
+  
+  mse_i
+}
+
+best_sub_models <- best_sub_models %>% 
+  mutate(mse = map_dbl(nvars, mse_for_bestsubset_boston))
+
+ggplot(best_sub_models, aes(nvars, mse)) +
+  geom_line() +
+  geom_vline(xintercept = which.min(best_sub_models[["mse"]]),
+             color = "red")
+```
+
+I'm obtaining weird results with test/training spliting, so I'm going to use cross-validation to find the optimum model size:
+```{r}
+# Split original dataset into 10 folds
+boston_cv <- boston %>% 
+  mutate(fold = sample(1:10, nrow(boston), replace = TRUE))
+
+
+# Function to compute CV MSE
+mse_for_bestsubset_boston <- function(n_vars) {
+  # Extract coefficients for each model size
+  coefs_i <- crim_mod_best %>% coef(id = n_vars)
+  
+  # Compute Y_predicted
+  pred_i <- boston_test_matrix[, names(coefs_i)] %*% coefs_i
+  
+  # Obtain MSE
+  mse_i <- mean((boston_test[["crim"]] - pred_i) ^ 2)
+  
+  mse_i
+}
+
+best_sub_models <- best_sub_models %>% 
+  mutate(mse = map_dbl(nvars, mse_for_bestsubset_boston))
+```
+
+
