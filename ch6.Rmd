@@ -815,27 +815,164 @@ ggplot(best_sub_models, aes(nvars, mse)) +
 
 I'm obtaining weird results with test/training spliting, so I'm going to use cross-validation to find the optimum model size:
 ```{r}
+set.seed(42)
 # Split original dataset into 10 folds
 boston_cv <- boston %>% 
   mutate(fold = sample(1:10, nrow(boston), replace = TRUE))
 
-
-# Function to compute CV MSE
-mse_for_bestsubset_boston <- function(n_vars) {
-  # Extract coefficients for each model size
-  coefs_i <- crim_mod_best %>% coef(id = n_vars)
+# Declaring function
+mse_cv_bestsubsets_boston <- function(n_vars, fold_i) {
+  # Split in train/test according to fold
+  boston_cv_train <-
+    boston_cv %>%
+    filter(fold != fold_i)
+  
+  boston_cv_test <-
+    boston_cv %>%
+    filter(fold == fold_i)
+  
+  boston_cv_test_matrix <- model.matrix(crim ~ ., boston_cv_test)
+  
+  # Train best-subsets
+  cv_bestsubset <- regsubsets(crim ~ ., data = boston_cv_train, nvmax = 13) 
+  
+  # Extract coefficients by model size
+  coefs_i <- cv_bestsubset %>% coef(id = n_vars)
   
   # Compute Y_predicted
-  pred_i <- boston_test_matrix[, names(coefs_i)] %*% coefs_i
+  pred_i <- boston_cv_test_matrix[, names(coefs_i)] %*% coefs_i
   
   # Obtain MSE
-  mse_i <- mean((boston_test[["crim"]] - pred_i) ^ 2)
+  mse_i <- mean((boston_cv_test[["crim"]] - pred_i) ^ 2)
   
   mse_i
 }
 
-best_sub_models <- best_sub_models %>% 
-  mutate(mse = map_dbl(nvars, mse_for_bestsubset_boston))
+cv_best_subsets <- 
+  expand_grid(n_vars = 1:13, fold_i = 1:10) %>% 
+  mutate(mse = map2_dbl(n_vars, fold_i, mse_cv_bestsubsets_boston)) %>% 
+  group_by(n_vars) %>% 
+  summarise(mse = mean(mse))
+
+ggplot(cv_best_subsets, aes(n_vars, mse)) +
+  geom_line() +
+  geom_vline(xintercept = which.min(cv_best_subsets[["mse"]]),
+             color = "red")
+```
+
+Therefore, we conclude that the optimal model size is 9 variables/predictors. This is the Test MSE for a model of that size, in `boston_test`. 
+```{r}
+best_subset_mse <- 
+  mse_for_bestsubset_boston(9)
+
+best_subset_mse
+```
+
+Now let's try lasso (alpha = 1).
+First finding alpha through CV:
+```{r}
+boston_train_m <- model.matrix(crim ~ ., data = boston_training)
+lambda_seq <- 10^seq(10, -10, length.out = 400)
+
+cv_lambda_boston <-
+  cv.glmnet(
+    x = boston_train_m,
+    y = boston_training[["crim"]],
+    lambda = lambda_seq,
+    nfold = 10,
+    alpha = 1
+  )
+
+
+best_lambda_boston <- cv_lambda_boston$lambda.min
+
+boston_lasso <- 
+  glmnet(
+    x = boston_train_m,
+    y = boston_training[["crim"]],
+    lambda = best_lambda_boston,
+    alpha = 1
+  )
+```
+
+Now let's estimate the Test MSE:
+```{r}
+boston_test_m <- model.matrix(crim ~ ., data = boston_test)
+
+crim_boston_lasso <- 
+  predict.glmnet(boston_lasso, newx = boston_test_m, s = best_lambda_boston)
+
+lasso_mse <- 
+  mean((crim_boston_lasso - boston_test[["crim"]])^2)
+
+lasso_mse
+```
+
+It's slightly higher than the Best Subset MSE.
+
+Now with ridge:
+```{r}
+cv_lambda_boston_ridge <-
+  cv.glmnet(
+    x = boston_train_m,
+    y = boston_training[["crim"]],
+    lambda = lambda_seq,
+    nfold = 10,
+    alpha = 0
+  )
+
+best_lambda_boston_ridge <- cv_lambda_boston_ridge$lambda.min
+
+boston_ridge <- 
+  glmnet(
+    x = boston_train_m,
+    y = boston_training[["crim"]],
+    lambda = best_lambda_boston_ridge,
+    alpha = 0
+  )
+
+crim_boston_ridge <- 
+  predict.glmnet(boston_ridge, newx = boston_test_m, 
+                 s = best_lambda_boston_ridge)
+
+ridge_mse <- 
+  mean((crim_boston_ridge - boston_test[["crim"]])^2)
+
+ridge_mse
+
+```
+
+Slightly higher than Lasso MSE.
+
+Now with PCR:
+```{r}
+boston_pcr <- 
+  pcr(crim ~ .,
+      data = boston_training,
+      scale = TRUE,
+      validation = "CV")
+
+summary(boston_pcr)
+```
+
+I will use 4 components, because the CV MSE barely moves when including more components after that.
+
+```{r}
+boston_pcr_train <- 
+  pcr(crim ~ .,
+      data = boston_training,
+      scale = TRUE)
+
+crim_pcr <- predict(boston_pcr_train, newx = boston_test, ncomp = 4)
+
+pcr_mse <- mean((crim_pcr - boston_test[["crim"]])^2)
+
+pcr_mse
+```
+
+Based on the previous results, I would choose the Ridge regression (the model with the lowest test MSE). It uses all the variables in the data (since ridge doesn't perform feature selection), but shrinks the coefficient values, based on the regularization term and the optimal lambda value.
+```{r}
+boston_ridge %>% predict.glmnet(type = "coefficients")
 ```
 
 
