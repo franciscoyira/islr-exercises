@@ -1,0 +1,402 @@
+---
+title: "7.8 Lab: Non-linear Modeling"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+library(ISLR)
+library(modelr)
+library(splines)
+library(gam)
+library(akima)
+wage <- ISLR::Wage
+```
+
+## 7.8.1 Polynomial Regression and Step Functions
+
+```{r}
+fit <- lm(wage ~ poly(age, 4, raw = TRUE), data = wage)
+
+coef(summary(fit))
+```
+
+Creating a grid of `age` values at which we want predictions:
+```{r}
+agelims <- range(wage[["age"]])
+
+age_grid <- seq(agelims[[1]], agelims[[2]])
+
+predictions <- 
+  tibble(
+    age = seq(agelims[[1]], agelims[[2]])
+  )
+  
+predictions %>% 
+  add_predictions(model = fit)
+```
+
+Another way of computing predictions
+```{r}
+predict_output <- 
+  predict(fit, newdata = predictions, se = TRUE)
+
+se_bands <- cbind(predict_output[["fit"]]+2*predict_output[["se.fit"]],
+                  predict_output[["fit"]]+2*predict_output[["se.fit"]])
+```
+
+Creating a tibble for plotting:
+```{r}
+predictions <- 
+  tibble(
+    age_value = age_grid,
+    predictions = predict_output[["fit"]],
+    low_band = predict_output[["fit"]]-2*predict_output[["se.fit"]],
+    high_band = predict_output[["fit"]]+2*predict_output[["se.fit"]]
+  )
+
+predictions %>% 
+  ggplot(aes(age_value, predictions)) +
+  geom_point(data = wage, aes(age, wage), alpha = 0.1, color = "grey60") +
+  geom_line(color = "red") +
+  geom_line(aes(y = low_band), color = "blue") +
+  geom_line(aes(y = high_band), color = "blue") +
+  labs(y = "wage", x = "age")
+```
+
+Another way (using base-plots):
+```{r}
+par(
+  mfrow = c(1, 2) ,
+  mar = c(4.5, 4.5, 1, 1) ,
+  oma = c(0, 0, 4, 0)
+)
+
+plot(wage$age ,
+     wage$wage ,
+     xlim = agelims ,
+     cex = .5,
+     col = " darkgrey")
+
+title("Degree -4 Polynomial", outer = T)
+
+lines(age_grid , predict_output$fit , lwd = 2, col = "blue")
+
+matlines(age_grid ,
+         cbind(predictions$low_band, predictions$high_band),
+         lwd = 1,
+         col = "blue",
+         lty = 3)
+```
+
+We can use ANOVA to choose the grade of the polynomial. ANOVA receives a set of nested models as input, and for each pair it test wether the simpler model is "enough", or if we need the more complex model of the pair to explain the response variable.
+```{r}
+polynomials <- 
+  tibble(
+    grade = 1:5,
+    models = map(grade, ~lm(wage ~ poly(age, .), data = wage))
+  )
+
+anova(polynomials[["models"]][[1]],
+      polynomials[["models"]][[2]],
+      polynomials[["models"]][[3]],
+      polynomials[["models"]][[4]],
+      polynomials[["models"]][[5]])
+```
+
+Note that if the models contain only the polynomic variable, then we could obtain the same p-values with a single regression of orthogonal polynomials.
+```{r}
+lm(wage ~ poly(age, 5), data = wage) %>% summary() %>% coef()
+```
+
+(also, the t-statistics of the single regression correspond to the square root of the F-values in the ANOVA).
+
+However, we still want to use ANOVA if we are chosing between models with more variables.
+
+### Polynomial regression with binary variable
+```{r}
+wage <- wage %>% 
+  mutate(above_250 = wage > 250)
+
+fit_binary <- 
+  glm(above_250 ~ poly(age, 4), data = wage, family = "binomial")
+
+preds_binary <- 
+  predict(fit_binary, newdata = list(age = age_grid),
+          se = TRUE)
+```
+
+Now we need to obtain the fitted values and confidence interval in terms of the response, not the link function. For this we use the transformation `exp(x)/(1 + exp(x))`
+```{r}
+transformation <- function(x) exp(x)/(1 + exp(x))
+
+predictions_binary <- 
+  tibble(
+    age_grid = age_grid,
+    log_odds = preds_binary$fit,
+    lower_logit = preds_binary$fit - 2*preds_binary$se.fit,
+    upper_logit = preds_binary$fit + 2*preds_binary$se.fit,
+    response = map_dbl(log_odds, transformation),
+    lower_response = map_dbl(lower_logit, transformation),
+    upper_response = map_dbl(upper_logit, transformation),
+
+  )
+
+ggplot(predictions_binary,
+       aes(age_grid, response)) +
+  geom_line() +
+  geom_line(aes(y = lower_response), color = "blue") +
+  geom_line(aes(y = upper_response), color = "blue") +
+  geom_jitter(data = wage,
+             aes(x = age,
+                 y = (wage > 250)/5),
+             height = 0, shape = "|") +
+  coord_cartesian(ylim = c(0, 0.2))
+
+```
+
+Using base R plots:
+```{r}
+plot(wage[["age"]], 
+     I(wage[["wage"]] > 250),
+     xlim=agelims,
+     type="n",
+     ylim=c(0, .2))
+
+points(jitter(wage[["age"]]), 
+       I((wage[["wage"]] >250) /5), cex =.5,
+       pch ="|",
+       col ="darkgrey")
+
+lines(age_grid, predictions_binary$response, lwd =2, col ="blue")
+
+matlines(age_grid,
+         cbind(predictions_binary$lower_response,
+               predictions_binary$upper_response), 
+         lwd=1, col="blue", lty =3)
+```
+
+### Step function
+```{r}
+lm(wage ~ cut(age, 4), data = wage) %>%
+  summary() %>% 
+  coef()
+```
+
+### Splines
+Fitting a cubic spline with knots at age of 25, 40, and 60 (we can use the argument `knots`).
+```{r}
+fit1_spline <- 
+  lm(wage ~ bs(age, knots = c(25, 40, 60)), data = wage)
+
+preds_spline <- predict(fit1_spline, newdata = list(age = age_grid),
+                        se = TRUE)
+
+predictions_spline1 <- 
+  tibble(
+    age = age_grid,
+    pred_wage = preds_spline$fit,
+    lower_interval = pred_wage - 2*preds_spline$se.fit,
+    upper_interval = pred_wage + 2*preds_spline$se.fit
+  )
+
+ggplot(predictions_spline1,
+       aes(age, pred_wage)) +
+  geom_point(data = wage, aes(age, wage), alpha = 0.1, 
+             color = "grey40") +
+  geom_line(color = "red") +
+  geom_line(aes(y = lower_interval), color = "blue") +
+  geom_line(aes(y = upper_interval), color = "blue") 
+```
+
+Seeing how the basis functions (for the splines) are created:
+```{r}
+bs(wage[["age"]], knots = c(25, 40, 60)) %>% 
+  dim()
+```
+
+The columns number indicates the degrees of freedom:
+```{r}
+bs(wage[["age"]], df = 6) %>% 
+  dim()
+```
+
+When `df` is specified (instead of `knots`), the `knots` are uniformly distributed:
+```{r}
+bs(wage[["age"]], df = 6) %>% 
+  attr("knots")
+```
+
+We can also use natural splines, specifying the degrees of freedom or the number of knots.
+```{r}
+fit1_nspline <- 
+  lm(wage ~ ns(age, df = 4), data = wage)
+
+preds_nspline <- predict(fit1_nspline, newdata = list(age = age_grid),
+                        se = TRUE)
+
+predictions_nspline1 <- 
+  tibble(
+    age = age_grid,
+    pred_wage = preds_nspline$fit,
+    lower_interval = pred_wage - 2*preds_nspline$se.fit,
+    upper_interval = pred_wage + 2*preds_nspline$se.fit
+  )
+
+ggplot(predictions_nspline1,
+       aes(age, pred_wage)) +
+  geom_point(data = wage, aes(age, wage), alpha = 0.1, 
+             color = "grey40") +
+  geom_line(color = "red") +
+  geom_line(aes(y = lower_interval), color = "blue") +
+  geom_line(aes(y = upper_interval), color = "blue") 
+```
+
+To fit a smoothing spline we use the `smooth.spline()` function (instead of `lm()`).
+```{r}
+fit1_smooth_spline <- 
+  smooth.spline(wage[["age"]], wage[["wage"]], df = 16)
+
+fit2_smooth_spline <- 
+  smooth.spline(wage[["age"]], wage[["wage"]], cv = TRUE)
+
+
+fit2_smooth_spline$df
+```
+
+
+```{r}
+predictions_smoothing_splines <- 
+  tibble(
+    age = predict(fit1_smooth_spline, 
+                          newdata = list(age = age_grid))$x,
+    pred_wage_1 = predict(fit1_smooth_spline, 
+                          newdata = age)$y,
+    pred_wage_2 = predict(fit2_smooth_spline, 
+                          newdata = age)$y)
+
+predictions_smoothing_splines %>% 
+  rename(`16 DF` = pred_wage_1,
+         `6.8 DF` = pred_wage_2) %>% 
+  pivot_longer(
+    cols = -age,
+    names_to = "model",
+    values_to = "pred_value"
+  ) %>% 
+  ggplot(aes(age, pred_value)) +
+  geom_line(aes(color = model, group = model)) +
+  geom_point(data = wage, aes(age, wage), alpha = 0.1, 
+             color = "grey40")
+```
+
+### Local Regression
+We use the `loess()` function. Here the key parameter is `span` (which specifies the % of nearest observations to use for prediction). The larger the span, the smoother the fit.
+```{r}
+fit_loess_1 <- loess(wage ~ age, span = 0.2, data = wage)
+fit_loess_2 <- loess(wage ~ age, span = 0.5, data = wage)
+
+
+predictions_loess <- 
+  tibble(
+    age = age_grid,
+    model1_span20 = 
+      predict(fit_loess_1, newdata = tibble(age = age_grid)),
+    model2_span50 = 
+      predict(fit_loess_2, newdata = tibble(age = age_grid))
+  )
+
+predictions_loess %>% 
+  pivot_longer(
+    cols = -age,
+    names_to = c("model", "span"),
+    values_to = "prediction",
+    names_sep = "_span"
+  ) %>% 
+  ggplot(aes(age, prediction)) +
+  geom_line(aes(color = span, group = span)) +
+  geom_point(data = wage, aes(age, wage), alpha = 0.1, 
+             color = "grey40")
+```
+
+### GAMs
+If we only use components that can be represented through basis functions, then `lm()` is enough for fitting a GAM. If we do a `summary()` we get the coefficients of the basis functions:
+```{r}
+gam_1 <- 
+  lm(wage ~ ns(year, 4) + ns(age, 5) + education,
+     data = wage)
+
+summary(gam_1)
+```
+
+However, if we want to use smoothing splines or local regression, we need the `gam` package, with the functions `gam()`, `s()` (for smoothing splines) and `lo()` (for local regression).
+
+We can use `plot()` directly on a `gam()` fit.
+```{r}
+gam_2 <- gam(wage ~ s(year, 4) + s(age, 5) + education,
+             data = wage)
+
+par(mfrow=c(1,3))
+
+plot(gam_2, se=TRUE ,col ="blue")
+```
+
+Since the relationship between `year` and `wage` looks mostly linear, we can use ANOVA to check if a GAM linear on `year` is enough. We can even check if `year` should be included in the model (in any form):
+```{r}
+gam_noyear <- gam(wage ~ s(age, 5) + education,
+             data = wage)
+
+gam_linearyear <- gam(wage ~ year + s(age, 5) + education,
+             data = wage)
+
+anova(gam_noyear, gam_linearyear, gam_2, test = "F")
+```
+
+The results show that it's justified to include `year` in the model, but as a linear term, not using a spline.
+
+Another way of testing this is looking at the `Pr(F)` values in the GAM `summary()`
+```{r}
+summary(gam_2)
+```
+
+These p-values are related to the null hypothesis that a linear relationship for that term is "enough". Here we can see that a non-linear term is required for `age` (p-value is very close to 0), but not for `year` (p-value = 0.35).
+
+For a GAM with local regression, we should specify the `span` for each term:
+```{r}
+gam_lo <- gam(wage ~ s(year, 4) + lo(age, span = 0.7) + education,
+    data = wage)
+
+par(mfrow = c(1,3))
+plot(gam_lo, se = TRUE, col = "green")
+```
+
+We can also use `lo()` to include interactions between two terms (as a bivariate local regression)
+```{r}
+gam_int_lo <- gam(
+  wage ~ lo(year, age, span = 0.5) + education, data = wage
+)
+```
+
+To visualize the results with a bivariate local regression we need to use the `akima` package:
+```{r}
+plot(gam_int_lo)
+```
+
+To fit a logistic regression GAM we just need to provide a binary response variable. 
+
+For this data, we're going to filter out the bottom level of `education`, because it contains zero positive cases (wage above 250.000).
+```{r}
+gam_logistic <-
+  wage %>%
+  filter(education != "1. < HS Grad") %>%
+  gam(I(wage > 250)∼year + s(age , df = 5) + education,
+      data = .,
+      family = "binomial")
+
+plot(gam_logistic, se = TRUE, col = "green")
+```
+
