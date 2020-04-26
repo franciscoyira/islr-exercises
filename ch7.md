@@ -1231,22 +1231,22 @@ summary(forwardselection)
     ## 5  ( 1 ) "*"        " "  " "    " "    " "       " "       " "        
     ## 6  ( 1 ) "*"        " "  " "    " "    " "       " "       " "        
     ## 7  ( 1 ) "*"        " "  " "    " "    " "       " "       " "        
-    ## 8  ( 1 ) "*"        " "  " "    " "    "*"       " "       " "        
+    ## 8  ( 1 ) "*"        " "  " "    " "    " "       " "       "*"        
     ##          P.Undergrad Room.Board Books Personal PhD Terminal S.F.Ratio
     ## 1  ( 1 ) " "         " "        " "   " "      " " " "      " "      
     ## 2  ( 1 ) " "         " "        " "   " "      " " " "      " "      
     ## 3  ( 1 ) " "         "*"        " "   " "      " " " "      " "      
-    ## 4  ( 1 ) " "         "*"        " "   " "      " " " "      " "      
-    ## 5  ( 1 ) " "         "*"        " "   " "      " " " "      " "      
-    ## 6  ( 1 ) " "         "*"        " "   " "      " " "*"      " "      
-    ## 7  ( 1 ) " "         "*"        " "   "*"      " " "*"      " "      
-    ## 8  ( 1 ) " "         "*"        " "   "*"      " " "*"      " "      
+    ## 4  ( 1 ) " "         "*"        " "   " "      "*" " "      " "      
+    ## 5  ( 1 ) " "         "*"        " "   " "      "*" " "      " "      
+    ## 6  ( 1 ) " "         "*"        " "   " "      "*" " "      " "      
+    ## 7  ( 1 ) " "         "*"        " "   "*"      "*" " "      " "      
+    ## 8  ( 1 ) " "         "*"        " "   "*"      "*" " "      " "      
     ##          perc.alumni Expend Grad.Rate
     ## 1  ( 1 ) " "         "*"    " "      
     ## 2  ( 1 ) " "         "*"    " "      
     ## 3  ( 1 ) " "         "*"    " "      
-    ## 4  ( 1 ) "*"         "*"    " "      
-    ## 5  ( 1 ) "*"         "*"    "*"      
+    ## 4  ( 1 ) " "         "*"    " "      
+    ## 5  ( 1 ) "*"         "*"    " "      
     ## 6  ( 1 ) "*"         "*"    "*"      
     ## 7  ( 1 ) "*"         "*"    "*"      
     ## 8  ( 1 ) "*"         "*"    "*"
@@ -1278,10 +1278,10 @@ I’m chosing the 6th model, which is the one with lower BIC.
 forwardselection %>% coef(id = 6)
 ```
 
-    ##   (Intercept)    PrivateYes    Room.Board      Terminal   perc.alumni 
-    ## -4029.5577334  2593.1947885     0.9406566    38.8954274    56.3599679 
+    ##   (Intercept)    PrivateYes    Room.Board           PhD   perc.alumni 
+    ## -4119.6875957  3089.6252383     0.9971226    44.1920047    45.1281955 
     ##        Expend     Grad.Rate 
-    ##     0.1987092    35.3239751
+    ##     0.2040630    26.5250355
 
 (b) Fit a GAM on the training data, using out-of-state tuition as the
 response and the features selected in the previous step as the
@@ -1306,23 +1306,23 @@ summary(gam_college)
     ## 
     ## Parametric coefficients:
     ##             Estimate Std. Error t value Pr(>|t|)    
-    ## (Intercept) 7562.820    851.908   8.878  < 2e-16 ***
-    ## PrivateYes  2269.331    278.580   8.146 5.66e-15 ***
-    ## Terminal      16.648      9.169   1.816   0.0702 .  
+    ## (Intercept) 5989.010    831.744   7.201 3.31e-12 ***
+    ## PrivateYes  2773.221    285.585   9.711  < 2e-16 ***
+    ## Terminal      33.107      8.821   3.753 0.000202 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Approximate significance of smooth terms:
-    ##                  edf Ref.df     F  p-value    
-    ## s(Room.Board)  1.954  2.489 15.12 7.68e-08 ***
-    ## s(perc.alumni) 1.775  2.242 10.50 2.04e-05 ***
-    ## s(Expend)      5.532  6.649 21.39  < 2e-16 ***
-    ## s(Grad.Rate)   1.000  1.000 21.45 4.98e-06 ***
+    ##                  edf Ref.df      F  p-value    
+    ## s(Room.Board)  1.486  1.841 29.943 8.19e-12 ***
+    ## s(perc.alumni) 1.000  1.000 15.595 9.33e-05 ***
+    ## s(Expend)      5.293  6.451 16.149  < 2e-16 ***
+    ## s(Grad.Rate)   2.411  3.092  7.194 8.62e-05 ***
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## R-sq.(adj) =  0.785   Deviance explained = 79.2%
-    ## GCV = 3.7187e+06  Scale est. = 3.5916e+06  n = 388
+    ## R-sq.(adj) =  0.792   Deviance explained = 79.9%
+    ## GCV = 3.4511e+06  Scale est. = 3.3338e+06  n = 388
 
 ``` r
 plot(gam_college)
@@ -1354,7 +1354,7 @@ Computing the RSS:
   sum()
 ```
 
-    ## [1] 1351784966
+    ## [1] 1453388595
 
 Plotting the residuals:
 
@@ -1381,3 +1381,468 @@ relationship with the response?
 
 There is evidence of non-linear relationships for all the continuous
 variables in the model, except for `Terminal`.
+
+(11) In Section 7.7, it was mentioned that GAMs are generally fit using
+a backfitting approach. The idea behind backfitting is actually quite
+simple. We will now explore backfitting in the context of multiple
+linear regression. Suppose that we would like to perform multiple linear
+regression, but we do not have software to do so. Instead, we only have
+software to perform simple linear regression. Therefore, we take the
+following iterative approach: we repeatedly hold all but one coefficient
+estimate fixed at its current value, and update only that coefficient
+estimate using a simple linear regression. The process is continued
+until convergence—that is, until the coefficient estimates stop
+changing.
+
+We now try this out on a toy example.
+
+(a) Generate a response \(Y\) and two predictors \(X_1\) and \(X_2\),
+with \(n = 100\).
+
+``` r
+set.seed(1989)
+toy_df <- 
+  tibble(
+    x1 = rnorm(100),
+    x2 = rnorm(100),
+    e = rnorm(100),
+    y = 2*x1 + 1.5*x2 + e
+  )
+```
+
+(b) Initialize \(\hatβ_1\) to take on a value of your choice. It does
+not matter what value you choose.
+
+``` r
+b1 <- 40
+```
+
+(c) Keeping \(\hatβ_1\) fixed, fit the model
+\(Y − \hatβ_1X_1 = β_0 + β_2X_2 + \epsilon\).
+
+``` r
+toy_df <- toy_df %>% 
+  mutate(a = y - b1*x1)
+
+b2 <- lm(a ~ x2, data = toy_df)$coef[2]
+
+b2
+```
+
+    ##       x2 
+    ## 1.822067
+
+(c) Keeping \(\hatβ_2\) fixed, fit the model
+\(Y − \hatβ_2X_2 = β_0 + β_1X_1 + \epsilon\).
+
+``` r
+toy_df <- toy_df %>% 
+  mutate(a = y - b2*x2)
+
+b1 <- lm(a ~ x1, data = toy_df)$coef[2]
+
+b1
+```
+
+    ##       x1 
+    ## 2.087873
+
+(e) Write a for loop to repeat (c) and (d) 1,000 times. Report the
+estimates of \(\hatβ_0\), \(\hatβ_1\),and \(\hatβ_1\) at each iteration
+of the for loop. Create a plot in which each of these values is
+displayed, with \(\hatβ_0\), \(\hatβ_1\),and \(\hatβ_2\) each shown in a
+different color.
+
+``` r
+iterations <- 1:1000
+placeholder_coeff <- 40
+
+iter_df <- 
+  tibble(
+    iterations = iterations
+  )
+
+fit_coefs <- function(iter, df) {
+  
+  coefs <- numeric(3)
+
+  if (iter %% 2 == 1) {
+    # Access the previous iteration coeff (or place)
+    coefs[2] <- placeholder_coeff
+    
+    df <- df %>% 
+     mutate(a = y - coefs[2]*x1)
+    
+    temp_lm <- lm(a ~ x2, data = df)
+    
+    coefs[1] <- temp_lm$coef[1]
+    coefs[3] <- temp_lm$coef[2]
+    
+    placeholder_coeff <<- coefs[3]
+    
+  } else {
+    coefs[3] <- placeholder_coeff
+    
+    df <- df %>% 
+     mutate(a = y - coefs[3]*x2)
+    
+    temp_lm <- lm(a ~ x1, data = df)
+    
+    coefs[1] <- temp_lm$coef[1]
+    coefs[2] <- temp_lm$coef[2]
+    
+    placeholder_coeff <<- coefs[2]
+  }
+    
+  coefs
+}
+
+iter_df <- 
+  iter_df %>% 
+  mutate(coefs = map(iterations, fit_coefs, df = toy_df)) %>% 
+  unnest(coefs) %>% 
+  mutate(coef_name = rep(c("b0", "b1", "b2"), 1000))
+
+(iter_df_pivoted <- iter_df %>% 
+  pivot_wider(
+    id_cols = iterations,
+    names_from = coef_name,
+    values_from = coefs
+  ))
+```
+
+    ## # A tibble: 1,000 x 4
+    ##    iterations      b0    b1    b2
+    ##         <int>   <dbl> <dbl> <dbl>
+    ##  1          1  3.31   40     1.82
+    ##  2          2 -0.0335  2.09  1.82
+    ##  3          3 -0.0552  2.09  1.51
+    ##  4          4 -0.0554  2.09  1.51
+    ##  5          5 -0.0554  2.09  1.51
+    ##  6          6 -0.0554  2.09  1.51
+    ##  7          7 -0.0554  2.09  1.51
+    ##  8          8 -0.0554  2.09  1.51
+    ##  9          9 -0.0554  2.09  1.51
+    ## 10         10 -0.0554  2.09  1.51
+    ## # ... with 990 more rows
+
+``` r
+ggplot(iter_df, aes(iterations, coefs, color = coef_name)) +
+  geom_line()
+```
+
+![](ch7_files/figure-gfm/unnamed-chunk-47-1.png)<!-- -->
+
+(f) Compare your answer in (e) to the results of simply performing
+multiple linear regression to predict \(Y\) using \(X_1\) and
+\(X_2\).Use the `abline()` function to overlay those multiple linear
+regression coefficient estimates on the plot obtained in (e).
+
+``` r
+lm_both_coefs <- 
+  lm(y ~ x1 + x2, data = toy_df)
+
+(coefs_mult_reg <- 
+  lm_both_coefs$coefficients)
+```
+
+    ## (Intercept)          x1          x2 
+    ## -0.05542756  2.08572526  1.50939760
+
+``` r
+ggplot(iter_df, aes(iterations, coefs)) +
+  geom_line(aes(color = coef_name)) +
+  geom_hline(yintercept = coefs_mult_reg[1], linetype = "dashed") +
+  geom_hline(yintercept = coefs_mult_reg[2], linetype = "dashed") +
+  geom_hline(yintercept = coefs_mult_reg[3], linetype = "dashed")
+```
+
+![](ch7_files/figure-gfm/unnamed-chunk-49-1.png)<!-- -->
+
+(g) On this data set, how many backfitting iterations were required in
+order to obtain a “good” approximation to the multiple regression
+coefficient estimates?
+
+Just a few, at the sixth iteration the coefficient estimates are almost
+equal to those obtained in multiple linear regression.
+
+(12) This problem is a continuation of the previous exercise. In a toy
+example with \(p = 100\), show that one can approximate the multiple
+linear regression coefficient estimates by repeatedly performing simple
+linear regression in a backfitting procedure. How many backfitting
+iterations are required in order to obtain a “good” approximation to the
+multiple regression coefficient estimates? Create a plot to justify your
+answer.
+
+First we need to create a new toy dataframe, this time with p = 100.
+
+I’m going to try two ways to do it. First with `purrr` and data frames:
+
+``` r
+start <- Sys.time()
+# 
+df_sim <- 
+  map_dfc(1:100, ~rnorm(100)) %>% 
+  rename_all(funs(c(str_c("x", 1:100))))
+```
+
+    ## Warning: funs() is soft deprecated as of dplyr 0.8.0
+    ## Please use a list of either functions or lambdas: 
+    ## 
+    ##   # Simple named list: 
+    ##   list(mean = mean, median = median)
+    ## 
+    ##   # Auto named with `tibble::lst()`: 
+    ##   tibble::lst(mean, median)
+    ## 
+    ##   # Using lambdas
+    ##   list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+    ## This warning is displayed once per session.
+
+``` r
+# Now create a random vector of 100 'true' coeficients
+coefs <- rnorm(100, mean = 1, sd = 20)
+
+# Obtain Y vector by multiplying each column to corresponding coefficient
+y <- map(1:100, 
+         ~magrittr::multiply_by(df_sim[[.]], coefs[.])) %>% 
+  Reduce(`+`, .)
+
+# Add column y to df_sim
+df_sim <- df_sim %>% 
+  mutate(y = y)
+
+Sys.time() - start
+```
+
+    ## Time difference of 0.153883 secs
+
+And now using matrix multiplication, and then converting to data frame:
+
+``` r
+start <- Sys.time()
+matrix_sim <- 
+  matrix(rnorm(10000), ncol = 100)
+
+# Create coefficients
+coefs <- rnorm(100, mean = 1, sd = 40)
+
+# Multiply to get y
+y <- matrix_sim  %*% coefs
+
+# Convert to dataframe
+df_sim <- 
+  matrix_sim %>% 
+  as_tibble() %>% 
+  rename_all(funs(c(str_c("x", 1:100)))) %>% 
+  mutate(y = y[,1])
+```
+
+    ## Warning: `as_tibble.matrix()` requires a matrix with column names or a `.name_repair` argument. Using compatibility `.name_repair`.
+    ## This warning is displayed once per session.
+
+``` r
+Sys.time() - start
+```
+
+    ## Time difference of 0.132067 secs
+
+(Note that matrix multiplication method is faster)
+
+Now we need to estimate coefficients:
+
+``` r
+iterations <- 1:1000
+list_coefs <- vector("list", length = 1001)
+
+# Declaring vector of coefs with an "initialization" value 
+coefs_template <- rep(40, 100)
+names(coefs_template) <- str_c("b", 1:100)
+
+list_coefs[[1]] <- coefs_template
+
+for (i in iterations) {
+  n_coef_update <- i %% 100
+  if (n_coef_update == 0) n_coef_update <- 100
+  
+  name_predictor_update <- str_c("x", n_coef_update)
+
+  # Define a "response variable" which is the residual of Y after predicting with all the coefficients except the "updating" one
+  predictor_update <- df_sim %>% pull(name_predictor_update)
+  
+  predictors_holdout <- df_sim %>% 
+    select(-one_of(name_predictor_update, "y")) 
+  
+  y_predicted_by_holdout <- as.matrix(predictors_holdout) %*% list_coefs[[i]][-n_coef_update]
+  
+  y_residual <- pull(df_sim, y) - y_predicted_by_holdout[,1]
+  
+  coef_updated <- 
+    lm(y_residual ~ predictor_update) %>% 
+    coef() %>% 
+    magrittr::extract("predictor_update")
+  
+  list_coefs[[i+1]] <- list_coefs[[i]]
+
+  list_coefs[[i+1]][n_coef_update] <- coef_updated
+  
+}
+```
+
+Now let’s plot the results:
+
+``` r
+(
+estimates_from_iteration <- 
+  list_coefs %>% 
+  enframe(name = "iteration") %>% 
+  mutate(value = map(value, enframe, name = "coef", value = "estimate")) %>% 
+  unnest(value)
+)
+```
+
+    ## # A tibble: 100,100 x 3
+    ##    iteration coef  estimate
+    ##        <int> <chr>    <dbl>
+    ##  1         1 b1          40
+    ##  2         1 b2          40
+    ##  3         1 b3          40
+    ##  4         1 b4          40
+    ##  5         1 b5          40
+    ##  6         1 b6          40
+    ##  7         1 b7          40
+    ##  8         1 b8          40
+    ##  9         1 b9          40
+    ## 10         1 b10         40
+    ## # ... with 100,090 more rows
+
+``` r
+ggplot(estimates_from_iteration,
+       aes(iteration, estimate, color = coef)) +
+  geom_line()
+```
+
+![](ch7_files/figure-gfm/unnamed-chunk-54-1.png)<!-- -->
+
+Posible improvements to the plot:
+
+  - Include values estimated with multiple linear regression as
+    reference (maybe as horizontal line, or points in the last
+    iteration).
+  - “Compress” the X axis, hiding the data points when a coefficient was
+    not updated
+
+<!-- end list -->
+
+``` r
+estimates_iteration_compressed <- 
+  estimates_from_iteration %>% 
+  group_by(coef, estimate) %>% 
+  summarise(iteration = min(iteration)) %>% 
+  mutate(order_iteration = min_rank(iteration))
+  
+ggplot(estimates_iteration_compressed,
+       aes(order_iteration, estimate, color = coef)) +
+  geom_line(size = 0.8, show.legend = FALSE) +
+  scale_x_continuous(breaks = 1:11)
+```
+
+![](ch7_files/figure-gfm/unnamed-chunk-55-1.png)<!-- -->
+
+Now let’s add the values obtained through multiple linear regression
+(just one estimation in `lm()`):
+
+``` r
+(
+coefs_lm <- 
+  lm(y ~ ., df_sim) %>% 
+  coef() %>% 
+  enframe(name = "coef", value = "estimate") %>% 
+  filter(coef != "(Intercept)") %>% 
+  mutate(coef = str_replace(coef, "x", "b"))
+)
+```
+
+    ## # A tibble: 100 x 2
+    ##    coef  estimate
+    ##    <chr>    <dbl>
+    ##  1 b1       -68.8
+    ##  2 b2        43.8
+    ##  3 b3       115. 
+    ##  4 b4        99.2
+    ##  5 b5        47.4
+    ##  6 b6        90.1
+    ##  7 b7        75.0
+    ##  8 b8       -87.8
+    ##  9 b9        60.2
+    ## 10 b10       46.6
+    ## # ... with 90 more rows
+
+``` r
+ggplot(estimates_iteration_compressed,
+       aes(order_iteration, estimate, color = coef)) +
+  geom_line(size = 0.8, show.legend = FALSE) +
+  scale_x_continuous(breaks = 1:11) +
+  geom_point(data = coefs_lm,
+             aes(x = 11.1),
+             show.legend = FALSE)
+```
+
+    ## Warning: Removed 1 rows containing missing values (geom_point).
+
+![](ch7_files/figure-gfm/unnamed-chunk-57-1.png)<!-- -->
+
+It seems that the estimates through iteration didn’t quite converge to
+the values obtained through multiple linear regression. Let’s check the
+differences between the true coefficients and the estimates:
+
+``` r
+(
+summary_coefs <- 
+  coefs %>% 
+  enframe(name = "coef") %>% 
+  mutate(coef = str_c("b", coef)) %>% 
+  left_join(coefs_lm) %>% 
+  left_join(
+    estimates_iteration_compressed %>% 
+      filter(order_iteration == 11) %>% 
+      ungroup() %>% 
+      select(coef, estimate_iteration = estimate)
+  )
+)
+```
+
+    ## Joining, by = "coef"Joining, by = "coef"
+
+    ## # A tibble: 100 x 4
+    ##    coef   value estimate estimate_iteration
+    ##    <chr>  <dbl>    <dbl>              <dbl>
+    ##  1 b1    -26.4     -68.8              21.5 
+    ##  2 b2     -5.47     43.8               4.81
+    ##  3 b3     17.6     115.                6.77
+    ##  4 b4     47.6      99.2              58.1 
+    ##  5 b5     43.6      47.4              15.9 
+    ##  6 b6     22.3      90.1              15.0 
+    ##  7 b7     21.0      75.0             -30.5 
+    ##  8 b8     68.0     -87.8              72.2 
+    ##  9 b9     98.1      60.2             104.  
+    ## 10 b10    63.7      46.6              63.0 
+    ## # ... with 90 more rows
+
+``` r
+summary_coefs %>% 
+  mutate(dif_estimate_lm = value - estimate,
+         dif_estimate_it = value - estimate_iteration) %>% 
+  summarise(
+    mean_dif_lm = mean(dif_estimate_lm^2, na.rm = TRUE),
+    mean_dif_it = mean(dif_estimate_it^2, na.rm = TRUE)
+  )
+```
+
+    ## # A tibble: 1 x 2
+    ##   mean_dif_lm mean_dif_it
+    ##         <dbl>       <dbl>
+    ## 1       6634.        625.
+
+The MSE in estimation “one coef at a time” was more than double than in
+the multiple linear regression.
