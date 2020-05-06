@@ -1,0 +1,313 @@
+---
+title: "8.3 Lab: Decision Trees"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(tidyverse)
+library(tree)
+library(ISLR)
+library(modelr)
+library(MASS) # for Boston dataset
+library(randomForest)
+library(gbm)
+```
+
+## 8.3.1 Fitting Classification Trees
+
+We first analyze the `Carseats` data set. We first encode the continuous variable `Sales` as a binary one.
+```{r}
+( 
+carseats <- ISLR::Carseats %>% 
+  as_tibble() %>% 
+  mutate(High = factor(ifelse(Sales <= 8, "No", "Yes")))
+)
+```
+
+Now we try to predict `High` using all variables but `Sales`.
+```{r}
+tree_carseats <- tree(High ~ . - Sales, data = carseats)
+```
+
+
+The `summary()` function lists the variables that are used as internal nodes in the tree, the number of terminal nodes, and the (training) error rate.
+```{r}
+summary(tree_carseats)
+```
+
+Displaying the tree structure:
+```{r, fig.asp=1, out.width=5}
+plot(tree_carseats)
+text(tree_carseats, pretty = 0)
+```
+
+If we just type the name of the tree object, R prints output corresponding to each branch of the tree. R displays:
+
+* the split criterion (e.g. `Price<92.5`)
+* the number of observations in that branch
+* the deviance, the overall prediction for the branch (Yes or No)
+* the fraction of observations in that branch that take on values of Yes and No
+
+Branches that lead to terminal nodes are indicated using asterisks.
+
+```{r}
+tree_carseats
+```
+
+Obtaining the test error: 
+```{r}
+set.seed(1989)
+
+carseats_train <- carseats %>% 
+  sample_frac(0.5)
+
+carseats_test <- carseats %>% 
+  anti_join(carseats_train)
+```
+
+
+```{r}
+tree_carseats <- tree(High ~ . - Sales, data = carseats_train)
+
+carseats_test <- carseats_test %>% 
+  add_predictions(tree_carseats, type = "class")
+
+caret::confusionMatrix(data = carseats_test$pred,
+                       reference = carseats_test$High)
+```
+
+Now let's consider whether pruning the tree might lead to improved results.
+
+```{r}
+set.seed(1989)
+cv_carseats <- cv.tree(
+  tree_carseats,
+  FUN = prune.misclass
+)
+names(cv_carseats)
+```
+
+```{r}
+cv_carseats
+```
+
+`$dev` represents the CV classification error. We can plot it against the number of nodes:
+```{r}
+qplot(cv_carseats$size, cv_carseats$dev, geom = "line") +
+  geom_vline(xintercept = cv_carseats$size[which.min(cv_carseats$dev)],
+             color = "red")
+```
+
+In this case, the tree with less CV error has 12 nodes. We can obtain this pruned tree using `prune.misclass()`
+```{r, fig.asp=0.8, out.width=5}
+prune_carseats <- prune.misclass(tree_carseats, best = 12)
+plot(prune_carseats)
+text(prune_carseats, pretty = 0)
+```
+
+How does the pruned tree perform on the test data set?
+```{r}
+carseats_test_pred_pruned <- 
+  carseats_test %>% 
+  add_predictions(prune_carseats, type = "class")
+
+caret::confusionMatrix(
+  data = carseats_test_pred_pruned$pred,
+  reference = carseats_test_pred_pruned$High
+)
+```
+
+Accuracy went up from 71% to 76.5%.
+
+## 8.3.2 Fitting Regression Trees
+
+```{r}
+set.seed(1989)
+
+boston_train <- Boston %>% 
+  as_tibble() %>% 
+  sample_frac(0.5)
+
+boston_test <- Boston %>% 
+  as_tibble() %>% 
+  anti_join(boston_train)
+```
+
+```{r}
+tree_boston <- tree(medv ~ . , data = boston_train)
+
+summary(tree_boston)
+```
+
+Here "deviance" is just the sum of the squared errors (RSS)
+
+```{r}
+plot(tree_boston)
+text(tree_boston, pretty = 0)
+```
+
+Checking if pruning the tree improves the performance:
+```{r}
+cv_boston <- cv.tree(tree_boston)
+
+qplot(cv_boston$size, cv_boston$dev, geom = "line") +
+  geom_vline(xintercept = cv_boston$size[which.min(cv_boston$dev)],
+             color = "red")
+
+```
+
+The tree selected by CV has 7 terminal nodes.
+```{r}
+prune_boston <- prune.tree(tree_boston, best = 7)
+
+plot(prune_boston)
+text(prune_boston, pretty = 0)
+```
+
+The tree lost the node that splits by `dis < 2.845`.
+
+Now we can do prediction using the pruned tree, and see how the predicted values relate to the actual values of `medv`.
+```{r}
+boston_test <- boston_test %>% 
+  add_predictions(prune_boston)
+
+qplot(pred, medv, data = boston_test)
+```
+
+Measuring the test set MSE
+```{r}
+(
+  test_mse_boston <- 
+  mean((boston_test$pred - boston_test$medv)^2)
+)
+```
+
+```{r}
+sqrt(test_mse_boston)
+```
+
+This means that the model leads to test predictions that are within around $4898 of the true median home value for the suburb.
+
+## 8.3.3 Bagging and Random Forests
+
+We now use the `randomForest` package. Note that bagging it's just a special case of random forest where $m = p$, so the same package can be used for bagging.
+
+Performing bagging:
+```{r}
+set.seed(1989)
+
+bag_boston <- randomForest(medv ~ ., data = boston_train,
+                           mtry = 13, importance = TRUE)
+
+bag_boston
+```
+
+`mtry` indicates the number of predictors that should be considered at each split (in this case, all the available predictors, since we're doing bagging).
+
+Now let's measure the test error:
+```{r}
+boston_test <- boston_test %>% 
+  add_predictions(bag_boston, var = "pred_bag")
+
+qplot(pred_bag, medv, data = boston_test)
+```
+
+```{r}
+(
+  test_mse_bag <- 
+  mean((boston_test$pred_bag - boston_test$medv)^2)
+)
+```
+
+```{r}
+sqrt(test_mse_bag)
+```
+
+The test MSE is much lower using bagging than using a single decision tree. Let's see if the test error further decreases when using random forest instead.
+
+```{r}
+set.seed(1989)
+
+rf_boston <- randomForest(medv ~ ., data = boston_train,
+                          mtry = 6, importance = TRUE)
+
+rf_boston
+```
+
+```{r}
+boston_test <- boston_test %>% 
+  add_predictions(rf_boston, var = "pred_rf")
+
+(
+  test_mse_rf <- 
+  mean((boston_test$pred_rf - boston_test$medv)^2)
+)
+```
+
+The test MSE in fact decreases from 12.55 to 11.
+
+We can use the `importance()` function to see the importance of each variable:
+```{r}
+importance(rf_boston)
+```
+
+Two measures of variable importance are reported. The former is based upon the mean decrease of accuracy in predictions on the out of bag samples when a given variable is excluded from the model. The latter is a measure of the total decrease in node impurity that results from splits over that variable, averaged over all trees.
+
+Plotting variable importance ranking:
+```{r}
+varImpPlot(rf_boston)
+```
+
+## 8.3.4 Boosting
+
+Finally we use the `gbm::gbm()` function to fit boosted regression trees.
+
+To fit boosted regression trees we need to specify `distribution = "gaussian"`. To use classification trees instead, we use `distribution = "bernoulli`.
+```{r}
+set.seed(1989)
+
+boost_boston <- gbm(medv ~ .,
+                    data = boston_train,
+                    distribution = "gaussian",
+                    n.trees = 5000,
+                    interaction.depth = 4)
+
+summary(boost_boston)
+```
+
+The function `summary()` provides a variable importance table and plot. We see that `lstat` and `rm` are the most important variables by far.
+
+We can produce partial dependence plots for certain variables, i.e. illustrate the marginal effect of a given variable after "integrating out" the other variables.
+
+```{r}
+plot(boost_boston, i = "rm")
+plot(boost_boston, i = "lstat")
+```
+
+Using the model to predict on the test set:
+```{r}
+predictions_boost <- 
+  predict(boost_boston, new_data = boston_test, n.trees = 5000, type = "response")
+
+mean((predictions_boost - boston_test$medv)^2)
+```
+
+For some reason, the test MSE is much higher than in boosting and random forest. Let's try with other tuning parameters:
+```{r}
+boost_boston2 <- 
+  gbm(medv ∼ .,
+      data = boston_train, distribution = "gaussian", n.trees =5000 , interaction.depth = 4,
+      shrinkage =0.2, verbose =F)
+
+predictions_boost2 <- 
+  predict(boost_boston2, new_data = boston_test, n.trees = 5000, type = "response")
+
+mean((predictions_boost2 - boston_test$medv)^2)
+
+```
+
