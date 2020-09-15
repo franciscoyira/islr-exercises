@@ -1,0 +1,93 @@
+---
+title: "10.4 Lab 1: Principal Components Analysis"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+```{r}
+(
+us_arrests <- 
+  USArrests %>% 
+  as_tibble(rownames = "states")
+)
+```
+
+```{r}
+us_arrests %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r}
+us_arrests %>% 
+  summarise_if(is.numeric, var)
+```
+
+Variables have big differences in mean and variance. Because of that, we scale them while doing PCA to set them all to a mean equal 0 and standard deviation equal 1.
+```{r}
+pr_out <- prcomp(select_if(us_arrests, is.numeric),
+                 scale = TRUE)
+```
+
+```{r}
+names(pr_out)
+```
+
+```{r}
+pr_out$center
+```
+
+```{r}
+pr_out$scale
+```
+
+```{r}
+pr_out$rotation
+```
+
+```{r}
+biplot(pr_out, scale = 0)
+```
+
+The biplot show the loadings and scores "inverted" from what appears in Figure 10.1, this is because when both scorings and loadings have inverted sign, they still represent the same loadings and scorings. 
+
+We can replicate Figure 10.1 by inverting the sign of loadings and scorings.
+```{r}
+pr_out$rotation <- -pr_out$rotation
+pr_out$x <- -pr_out$x
+biplot(pr_out, scale = 0)
+```
+
+```{r}
+pr_out$sdev
+```
+
+Variance explained by each component:
+```{r}
+pr_var <- pr_out$sdev ^2
+```
+
+Proportion of variance explained:
+```{r}
+pve <- pr_var/sum(pr_var)
+pve
+```
+
+```{r}
+qplot(x = 1:4, y = cumsum(pve), geom = "line") +
+  labs(x = "Principal Component",
+       y = "Cumulative Proportion of Variance Explained")
+```
+
+```{r}
+qplot(x = 1:4, y = pve, geom = "line") +
+  labs(x = "Principal Component",
+       y = "Proportion of Variance Explained")
+```
+
