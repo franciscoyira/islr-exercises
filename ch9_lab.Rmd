@@ -11,6 +11,7 @@ output:
 library(tidyverse)
 library(e1071)
 library(ROCR)
+library(ISLR)
 ```
 
 ## 9.6.1 Support Vector Classifier
@@ -373,3 +374,69 @@ svmfit_mc <-
 plot(svmfit_mc, data_mc)
 ```
 ### 9.6.5 Application to Gene Expression Data
+
+```{r}
+names(ISLR::Khan)
+```
+```{r}
+dim(Khan$xtrain)
+```
+
+```{r}
+length(Khan$ytrain)
+```
+```{r}
+dim(Khan$xtest)
+```
+```{r}
+length(Khan$ytest)
+```
+Values that the response variable can take:
+```{r}
+table(Khan$ytrain)
+```
+
+There are 63 train and 20 test observations (tissue samples) with expression measurements for 2308 genes.
+
+We will use a support vector approach to predict cancer subtype using gene expression measurements.
+
+Since there are a very large number of features relative to the number of observations we should use a linear kernel, because the additional flexibility that will result from using a polynomial or radial kernel is unnecessary.
+
+```{r}
+data_genes <- 
+  as_tibble(Khan$xtrain) %>% 
+  mutate(
+    y = as.factor(Khan$ytrain)
+  )
+
+data_genes
+```
+
+```{r}
+svm_genes <- 
+  svm(
+    y ~ ., 
+    data = data_genes,
+    kernel = "linear",
+    cost = 10
+  )
+
+summary(svm_genes)
+```
+
+```{r}
+table(predicted = svm_genes$fitted, truth = data_genes$y)
+```
+
+There are no training errors, which is not surprising since there is high dimensionality. Let's check how the model performs on test data:
+```{r}
+data_test_genes <- 
+  as_tibble(Khan$xtest) %>% 
+  mutate(y = as.factor(Khan$ytest))
+
+pred_test_genes <- predict(svm_genes, data_test_genes)
+
+table(predict = pred_test_genes, truth = data_test_genes$y)
+```
+
+We see that using `cost=10` yields two test set errors on this data.
