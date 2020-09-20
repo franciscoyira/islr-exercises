@@ -7,6 +7,12 @@ output:
     md_extensions: -fancy_lists+startnum
 ---
 
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(e1071)
+```
+
+
 ## Conceptual
 
 (1) This problem involves hyperplanes in two dimensions.
@@ -23,4 +29,114 @@ All observations except (-1,1) are assigned to the blue class.
 
 We can see this by expanding the equation of the boundary. Doing this we arrive get the following expression, which is clearly linear in terms of $X_1, X_1^2, X_2$ and $X_2^2$. 
 
-![](ch9_files/exc2_d.png)
+![](ch9_files/exc2_d.png) 
+
+(3)
+
+![](ch9_files/exec3_a_b.png)
+
+(c) Describe the classification rule for the maximal margin classifier.
+
+A: Classify to "Red" if $-(1/2) + X_1 - X_2 < 0$ and classify to "Blue" otherwise.
+
+![](ch9_files/exec3_d_e.png)
+Support vectors are circled.
+
+(f) Argue that a slight movement of the seventh observation would not affect the maximal margin hyperplane.
+
+The seventh observation (4,1) is not a support vector and also is relatively far away of the margin (as can be seen in the figure above), so a small movement of it would not touch the margin, and thus would not move the maximal margin hyperplane.
+
+![](ch9_files/exec3_g.png)
+
+![](ch9_files/exec3_h.png)
+
+## Applied
+
+(4) Generate a simulated two-class data set with 100 observations and two features in which there is a visible but non-linear separation between the two classes. Show that in this setting, a support vector machine with a polynomial kernel (with degree greater than 1) or a radial kernel will outperform a support vector classifier on the training data. Which technique performs best on the test data? Make plots and report training and test error rates in order to back up your assertions.
+
+```{r}
+set.seed(1991)
+sim_data <- 
+  tibble(
+    x1 = c(rnorm(30, mean = 1),
+           rnorm(30, mean = 3),
+           rnorm(40, mean = 2)),
+    x2 = c(rnorm(30, mean = 2),
+           rnorm(30, mean = -1),
+           rnorm(40, mean = -4)),
+    class = c(rep("red", 30), rep("blue", 30), rep("red", 40))
+  ) %>%
+  mutate(class = as.factor(class))
+
+sim_data %>% 
+  ggplot(aes(x1, x2, color = class)) +
+  geom_point() +
+  scale_color_identity()
+```
+
+Splitting between test and train:
+```{r}
+set.seed(1989)
+sim_data_train <- 
+  sim_data %>% 
+  sample_frac(0.5)
+
+sim_data_test <- 
+  sim_data %>% 
+  anti_join(sim_data_train)
+```
+
+Training 3 models: linear, polynomial, and radial.
+```{r}
+svm_lineal <- svm(class ~ .,
+                  data = sim_data_train,
+                  kernel = "linear",
+                  cost = 10)
+
+svm_polynomial <- svm(class ~ .,
+                  data = sim_data_train,
+                  kernel = "polynomial",
+                  degree = 3,
+                  cost = 10)
+
+svm_radial <- svm(class ~ .,
+                  data = sim_data_train,
+                  kernel = "radial",
+                  gamma = 1,
+                  cost = 10)
+```
+
+```{r}
+sim_data_test <- 
+  sim_data_test %>% 
+  modelr::add_predictions(svm_lineal, var = "pred_linear") %>% 
+  modelr::add_predictions(svm_polynomial, var = "pred_poly") %>% 
+  modelr::add_predictions(svm_radial, var = "pred_radial")
+
+sim_data_test
+```
+Performance of linear kernel:
+```{r}
+sim_data_test %>% 
+  select(class, pred_linear) %>% 
+  table()
+```
+Performance of polynomial kernel:
+```{r}
+sim_data_test %>% 
+  select(class, pred_poly) %>% 
+  table()
+```
+Performance of radial kernel:
+```{r}
+sim_data_test %>% 
+  select(class, pred_radial) %>% 
+  table()
+```
+We see that the classifier with radial kernel has the best performance on test data (just 2 of 50 observations missclasified, versus 14 and 11 missclassifications when we use other kernels).
+
+Plot of radial kernel:
+```{r}
+plot(svm_radial, data = sim_data_train)
+```
+
