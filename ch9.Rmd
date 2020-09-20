@@ -1,0 +1,26 @@
+---
+title: "9.7 Exercises"
+output: 
+  github_document:
+    md_extensions: -fancy_lists+startnum
+  html_notebook: 
+    md_extensions: -fancy_lists+startnum
+---
+
+## Conceptual
+
+(1) This problem involves hyperplanes in two dimensions.
+
+![](ch9_files/exc1.png) 
+(2) We have seen that in $p = 2$ dimensions, a linear decision boundary takes the form $β_0+β_1X_1+β_2X_2 = 0$. We now investigate a non-linear decision boundary.
+
+![](ch9_files/exc-2.png)
+![](ch9_files/exc2_c.png)  
+
+All observations except (-1,1) are assigned to the blue class. 
+
+(d) Argue that while the decision boundary in (c) is not linear in terms of $X_1$ and $X_2$, it is linear in terms of $X_1, X_1^2, X_2$ and $X_2^2$.
+
+We can see this by expanding the equation of the boundary. Doing this we arrive get the following expression, which is clearly linear in terms of $X_1, X_1^2, X_2$ and $X_2^2$. 
+
+![](ch9_files/exc2_d.png)
