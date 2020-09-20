@@ -345,7 +345,7 @@ cv_lasso <-
     x = as.matrix(select(df, -y)),
     y = as.matrix(select(df, y)),
     alpha = 1,
-    nfolds = 100
+    nfolds = 10
   )
 
 cv_lasso[["lambda.min"]]
