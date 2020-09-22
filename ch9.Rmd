@@ -140,3 +140,107 @@ Plot of radial kernel:
 plot(svm_radial, data = sim_data_train)
 ```
 
+```{r}
+plot(svm_polynomial, data = sim_data_train)
+```
+
+```{r}
+plot(svm_lineal, data = sim_data_train)
+
+```
+
+(5) We have seen that we can fit an SVM with a non-linear kernel in order to perform classification using a non-linear decision boundary. We will now see that we can also obtain a non-linear decision boundary by performing logistic regression using non-linear transformations of the features
+
+(a) Generate a data set with $n = 500$ and $p = 2$, such that the observations belong to two classes with a quadratic decision boundary between them.
+```{r}
+sim_data2 <- 
+  tibble(
+    x1 = runif(500) - 0.5,
+    x2 = runif(500) - 0.5,
+    y = 1*(x1^2-x2^2 > 0)
+  )
+
+sim_data2
+```
+(b) Plot the observations
+```{r}
+ggplot(sim_data2,
+       aes(x1, x2, color = factor(y))) +
+  geom_point()
+```
+
+(c) Fit a logistic regression model to the data, using $X_1$ and $X_2$ as predictors. 
+
+```{r}
+lreg_sim2 <- glm(y ~ x1 + x2, data = sim_data2, family = "binomial")
+
+summary(lreg_sim2)
+```
+
+(d) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels. The decision boundary should be linear.
+
+```{r}
+sim_data2 %>% 
+  modelr::add_predictions(lreg_sim2, var = "pred_lreg", 
+                          type = "response") %>% 
+  mutate(pred_lreg_class = ifelse(pred_lreg > 0.5, 1, 0)) %>% 
+  ggplot(aes(x1, x2, color = factor(pred_lreg_class))) +
+  geom_point() +
+  labs(color = "predicted class")
+```
+
+(e) Now fit a logistic regression model to the data using non-linear functions of X1 and X2 as predictors (e.g. $X^2$, $X_1 \times X_2$, and so forth).
+```{r}
+lreg2_sim2 <- 
+  glm(y ~ x1 * x2 + I(x1^2) * I(x2^2) + 
+        x1:I(x1^2) + x2:I(x2^2), data = sim_data2, 
+      family = "binomial")
+
+summary(lreg2_sim2)
+```
+
+(f) Apply this model to the training data in order to obtain a predicted class label for each training observation. Plot the observations, colored according to the predicted class labels.
+
+```{r}
+sim_data2 %>% 
+  modelr::add_predictions(lreg2_sim2, var = "pred_lreg", 
+                          type = "response") %>% 
+  mutate(pred_lreg_class = ifelse(pred_lreg > 0.5, 1, 0)) %>% 
+  ggplot(aes(x1, x2, color = factor(pred_lreg_class))) +
+  geom_point() +
+  labs(color = "predicted class")
+```
+
+(g) Fit a support vector classifier to the data with X1 and X2 as predictors. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels
+
+```{r}
+svm_sim2 <- 
+  svm(factor(y) ~ ., data = sim_data2,
+    kernel = "linear",
+    cost = 1)
+
+sim_data2 %>% 
+  modelr::add_predictions(svm_sim2, var = "pred_svm") %>% 
+  ggplot(aes(x1, x2, color = pred_svm)) +
+  geom_point() +
+  labs(color = "predicted class")
+```
+
+(h) Fit a SVM using a non-linear kernel to the data. Obtain a class prediction for each training observation. Plot the observations, colored according to the predicted class labels.
+```{r}
+svm_nl_sim2 <- 
+  svm(factor(y) ~ ., data = sim_data2,
+    kernel = "polynomial",
+    degree = 2,
+    cost = 1)
+
+sim_data2 %>% 
+  modelr::add_predictions(svm_nl_sim2, var = "pred_svm") %>% 
+  ggplot(aes(x1, x2, color = pred_svm)) +
+  geom_point() +
+labs(color = "predicted class")
+```
+
+(i) Comment on your results.
+
+A: We see that the linear support vector classifier and the regression with the original feature space yield to similar results: a decision border that is just a line (an hyperplane in $p=2$). Similarly, both the SVM with polynomial kernel and the regression with non-linear functions of the predictors succeed in learning the true data generating process (because both of them use an enlarged feature space that allows a non-linear boundary in $p=2$).
