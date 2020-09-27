@@ -244,3 +244,386 @@ labs(color = "predicted class")
 (i) Comment on your results.
 
 A: We see that the linear support vector classifier and the regression with the original feature space yield to similar results: a decision border that is just a line (an hyperplane in $p=2$). Similarly, both the SVM with polynomial kernel and the regression with non-linear functions of the predictors succeed in learning the true data generating process (because both of them use an enlarged feature space that allows a non-linear boundary in $p=2$).
+
+(6) At the end of Section 9.6.1, it is claimed that in the case of data that is just barely linearly separable, a support vector classifier with a small value of cost that misclassifies a couple of training observations may perform better on test data than one with a huge value of cost that does not misclassify any training observations. You will now investigate this claim.
+
+(a) Generate two-class data with $p = 2$ in such a way that the classes are just barely linearly separable.
+
+```{r}
+set.seed(1989)
+sim_data3 <- 
+  tibble(
+    x1 = runif(500, -0.5, 0.5),
+    x2 = runif(500, -0.5, 0.5),
+    class = factor(ifelse(x1-2*x2 > 0.1, 1, -1))
+  )
+
+sim_data3 %>% 
+  ggplot(aes(x1,x2, color = class)) +
+  geom_point()
+```
+
+(b) Compute the cross-validation error rates for support vector classifiers with a range of cost values. How many training errors are misclassified for each value of cost considered, and how does this relate to the cross-validation errors obtained?
+
+```{r}
+cost_range <- c(0.01, 0.1, 1, 5, 10, 100, 
+                       1000, 1e+04, 1e+05, 1e+09)
+
+tune_out <- tune(svm,
+                 class ~ .,
+                 data = sim_data3,
+                 kernel = "linear",
+                 ranges = list(
+                   cost = cost_range
+                 ))
+
+summary(tune_out)
+```
+```{r}
+qplot(factor(cost), error, data = tune_out$performances, geom = "col")
+```
+
+Looking for misclassified observations in training data:
+```{r}
+train_svm <- function(cost) {
+  svm(class ~ .,
+      data = sim_data3,
+      kernel = "linear",
+      cost = cost)
+}
+
+count_train_errors <- function(model) {
+  sim_data3 %>% 
+  modelr::add_predictions(model) %>% 
+  mutate(error = class != pred) %>% 
+  pull(error) %>% 
+  sum()
+}
+
+
+svm_by_cost <- 
+  tibble(
+  cost_range = cost_range,
+  model = map(cost_range, train_svm),
+  n_train_errors = map_dbl(model, count_train_errors)
+)
+
+svm_by_cost %>% 
+  ggplot(aes(factor(cost_range), n_train_errors)) +
+  geom_col() + 
+  geom_label(aes(label = n_train_errors)) +
+  labs(x = "cost", y = "N. of training errors")
+```
+
+The number of training observations misclassified always goes downwards as we increase the cost parameter, but the cross validation starts going up after certain cost value.
+
+(c) Generate an appropriate test data set, and compute the test errors corresponding to each of the values of cost considered. Which value of cost leads to the fewest test errors, and how does this compare to the values of cost that yield the fewest training errors and the fewest cross-validation errors?
+
+```{r}
+#New dataset with the same data-generating process but another seed
+set.seed(2020)
+sim_data4 <- 
+  tibble(
+    x1 = runif(500, -0.5, 0.5),
+    x2 = runif(500, -0.5, 0.5),
+    class = factor(ifelse(x1-2*x2 > 0.1, 1, -1))
+  )
+
+count_test_errors <- function(model) {
+  sim_data4 %>% 
+  modelr::add_predictions(model) %>% 
+  mutate(error = class != pred) %>% 
+  pull(error) %>% 
+  sum()
+}
+
+svm_by_cost %>% 
+  mutate(n_test_errors = map_dbl(model, count_test_errors)) %>% 
+  ggplot(aes(factor(cost_range), n_test_errors)) +
+  geom_col() + 
+  geom_label(aes(label = n_test_errors)) +
+  labs(x = "cost", y = "N. of test errors")
+```
+
+`cost = 1000` leads to the fewest test errors. This is close to what we get with CV errors, where values 10, 100 and 1000 all minimized the CV error. 
+
+(7) In this problem, you will use support vector approaches in order to predict whether a given car gets high or low gas mileage based on the `Auto` data set.
+
+(a) Create a binary variable that takes on a 1 for cars with gas mileage above the median, and a 0 for cars with gas mileage below the median.
+
+```{r}
+auto <- ISLR::Auto %>% 
+  as_tibble() %>% 
+  mutate(high_mileage = factor(ifelse(mpg > median(mpg), 1, 0))) %>%
+  select(-mpg)
+```
+
+(b) Fit a support vector classifier to the data with various values of cost, in order to predict whether a car gets high or low gas mileage. Report the cross-validation errors associated with different values of this parameter. Comment on your results.
+
+```{r}
+tune_out_auto <- 
+  tune(
+  svm,
+  high_mileage ~ .,
+  data = auto,
+  kernel = "linear",
+  ranges = list(cost = c(1e-09, 1e-06, 1e-04, cost_range))
+)
+
+tune_out_auto$performances
+```
+
+`cost = 1e-02` achieves the minimum CV error.
+
+(c) Now repeat (b), this time using SVMs with radial and polynomial basis kernels, with different values of gamma and degree and cost. Comment on your results.
+
+```{r}
+tune_out_auto_poly <- 
+  tune(
+  svm,
+  high_mileage ~ .,
+  data = auto,
+  kernel = "polynomial",
+  ranges = list(cost = c(1e-09, 1e-06, 1e-04, cost_range),
+                degree = 2:10)
+)
+
+tune_out_auto_poly$performances %>% 
+  arrange(error)
+```
+
+
+```{r}
+tune_out_auto_radial <- 
+  tune(
+  svm,
+  high_mileage ~ .,
+  data = auto,
+  kernel = "radial",
+  ranges = list(cost = c(1e-09, 1e-06, 1e-04, cost_range),
+                gamma = c(0.001, 0.01, 0.1, 1, 10, 100, 1000))
+)
+
+tune_out_auto_radial$performances %>% 
+  arrange(error)
+```
+Here the lowest CV error is achieved with `cost = 5` and `gamma = 1e-01`. This error value is lower than the minimum errors obtained with linear and polynomial kernels.
+
+(d) Make some plots to back up your assertions in (b) and (c).
+
+Linear kernel. CV error for different `cost` values:
+```{r}
+tune_out_auto$performances %>% 
+  ggplot(aes(factor(cost), error, group = 1)) +
+  geom_line() +
+  geom_point() +
+  geom_vline(xintercept = which.min(tune_out_auto$performances$error),
+             color = "red")
+```
+
+Polynomial kernel. CV error for different `degree` and `cost` values:
+```{r}
+tune_out_auto_poly$performances %>% 
+  ggplot(aes(factor(cost), factor(degree), fill = error)) +
+  geom_tile() +
+  scale_fill_viridis_b(direction = -1) +
+  labs(x = "cost",
+       y = "degree") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Radial kernel. CV error for different `gamma` and `cost` values:
+```{r}
+tune_out_auto_radial$performances %>% 
+  ggplot(aes(factor(cost), factor(gamma), fill = error)) +
+  geom_tile() +
+  scale_fill_viridis_b(direction = -1) +
+  labs(x = "cost",
+       y = "gamma") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Comparing the minimum CV error for each kernel
+```{r}
+get_minimum_error <- function(performances_df) {
+  performances_df %>% 
+    pull(error) %>% 
+    min()
+}
+
+tibble(
+  kernel = c("linear", "polynomial", "radial"),
+  performances = list(tune_out_auto$performances,
+                      tune_out_auto_poly$performances,
+                      tune_out_auto_radial$performances),
+  minimum_error = map_dbl(performances, get_minimum_error)
+) %>% 
+  ggplot(aes(kernel, minimum_error, fill = minimum_error)) +
+  scale_fill_viridis_b(direction = -1) +
+  geom_col()
+```
+
+The radial kernel allows us to obtain the minimum cross-validation error.
+
+(8) This problem involves the OJ data set which is part of the ISLR package.
+
+(a) Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
+
+```{r}
+set.seed(1989)
+oj_train <- ISLR::OJ %>% 
+  as_tibble() %>% 
+  sample_n(800)
+
+oj_test <- ISLR::OJ %>% 
+  as_tibble() %>% 
+  anti_join(oj_train)
+```
+
+(b) Fit a support vector classifier to the training data using `cost=0.01`, with `Purchase` as the response and the other variables as predictors. Use the `summary()` function to produce summary statistics, and describe the results obtained.
+
+```{r}
+svm_oj_linear <- 
+  svm(Purchase ~ .,
+    data = oj_train,
+    kernel = "linear",
+    cost = 0.01,
+    scale = TRUE)
+
+summary(svm_oj_linear)
+```
+
+About half the training observations ended up as support vectors.
+
+(c) What are the training and test error rates?
+```{r}
+oj_train_pred <- oj_train %>% 
+  modelr::add_predictions(svm_oj_linear) %>% 
+  mutate(error = pred != Purchase)
+
+oj_test_pred <- oj_test %>% 
+  modelr::add_predictions(svm_oj_linear) %>% 
+  mutate(error = pred != Purchase)
+```
+
+Train error:
+```{r}
+oj_train_pred$error %>% mean()
+```
+
+Test error:
+```{r}
+oj_test_pred$error %>% mean()
+```
+(d) Use the `tune()` function to select an optimal `cost`. Consider values in the range 0.01 to 10.
+```{r}
+tune_linear_oj <- tune(
+  svm,
+  Purchase ~ .,
+  data = oj_train,
+  kernel = "linear",
+  scale = TRUE,
+  ranges = list(cost = c(0.01, 0.05, 0.1, 0.3, 0.5, 1, 3, 5, 7, 10))
+)
+
+tune_linear_oj$performances %>% 
+  arrange(error)
+```
+(e) Compute the training and test error rates using this new value for cost.
+```{r}
+oj_train_pred <- oj_train %>% 
+  modelr::add_predictions(tune_linear_oj$best.model,
+                          var = "pred_tune_linear") %>% 
+  mutate(error_tune_linear = pred_tune_linear != Purchase)
+
+oj_test_pred <- oj_test %>% 
+  modelr::add_predictions(tune_linear_oj$best.model,
+                          var = "pred_tune_linear") %>% 
+  mutate(error_tune_linear = pred_tune_linear != Purchase)
+```
+
+Train error:
+```{r}
+oj_train_pred$error_tune_linear %>% mean()
+```
+Test error:
+```{r}
+oj_test_pred$error_tune_linear %>% mean()
+```
+(f) Repeat parts (b) through (e) using a support vector machine with a radial kernel. Use the default value for `gamma`.
+
+```{r}
+tune_radial_oj <- tune(
+  svm,
+  Purchase ~ .,
+  data = oj_train,
+  kernel = "radial",
+  scale = TRUE,
+  ranges = list(cost = c(0.01, 0.05, 0.1, 0.3, 0.5, 1, 3, 5, 7, 10))
+)
+
+tune_radial_oj$performances %>% 
+  arrange(error)
+```
+```{r}
+oj_train_pred <- oj_train %>% 
+  modelr::add_predictions(tune_radial_oj$best.model,
+                          var = "pred_tune_radial") %>% 
+  mutate(error_tune_radial = pred_tune_radial != Purchase)
+
+oj_test_pred <- oj_test %>% 
+  modelr::add_predictions(tune_radial_oj$best.model,
+                          var = "pred_tune_radial") %>% 
+  mutate(error_tune_radial = pred_tune_radial != Purchase)
+```
+
+Train error:
+```{r}
+oj_train_pred$error_tune_radial %>% mean()
+```
+Test error:
+```{r}
+oj_test_pred$error_tune_radial %>% mean()
+```
+(g) Repeat parts (b) through (e) using a support vector machine with a polynomial kernel. Set `degree=2`.
+
+
+```{r}
+tune_poly_oj <- tune(
+  svm,
+  Purchase ~ .,
+  data = oj_train,
+  kernel = "polynomial",
+  scale = TRUE,
+  degree = 2,
+  ranges = list(cost = c(0.01, 0.05, 0.1, 0.3, 0.5, 1, 3, 5, 7, 10))
+)
+
+tune_poly_oj$performances %>% 
+  arrange(error)
+```
+```{r}
+oj_train_pred <- oj_train %>% 
+  modelr::add_predictions(tune_poly_oj$best.model,
+                          var = "pred_tune_poly") %>% 
+  mutate(error_tune_poly = pred_tune_poly != Purchase)
+
+oj_test_pred <- oj_test %>% 
+  modelr::add_predictions(tune_poly_oj$best.model,
+                          var = "pred_tune_poly") %>% 
+  mutate(error_tune_poly = pred_tune_poly != Purchase)
+```
+
+Train error:
+```{r}
+oj_train_pred$error_tune_poly %>% mean()
+```
+Test error:
+```{r}
+oj_test_pred$error_tune_poly %>% mean()
+```
+
+(h) Overall, which approach seems to give the best results on this
+data?
+
+SVM with radial kernel and `cost = 0.5` leads to the lower CV error rate.
