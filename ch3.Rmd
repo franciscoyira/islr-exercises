@@ -520,7 +520,7 @@ summary(reg_no_colin2)
 confint(reg_no_colin2)
 ```
 
-    As in d), in this case we can also reject the null hypothesis of the coefficient being equal to zero. However, the estimated value is much higher than it's true value (the true value is even outside the confidence interval). This may be because, since `x2` has been generated from `x1`, it's coefficient is picking up the relationship from both `x2` and `x1` (through their correlation) with the response variable.
+As in d), in this case we can also reject the null hypothesis of the coefficient being equal to zero. However, the estimated value is much higher than it's true value (the true value is even outside the confidence interval). This may be because, since `x2` has been generated from `x1`, it's coefficient is picking up the relationship from both `x2` and `x1` (through their correlation) with the response variable.
     
 f. Do the results obtained in (c)–(e) contradict each other? Explain your answer.
 

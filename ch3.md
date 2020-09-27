@@ -125,10 +125,10 @@ Boston %>%
   filter(leverage == max(leverage))
 ```
 
-    ##      crim zn indus chas   nox    rm age   dis rad tax ptratio black lstat
-    ## 1 18.4982  0  18.1    0 0.668 4.138 100 1.137  24 666    20.2 396.9 37.97
-    ##   medv   leverage
-    ## 1 13.8 0.02686517
+    ##      crim zn indus chas   nox    rm age   dis rad tax ptratio black lstat medv
+    ## 1 18.4982  0  18.1    0 0.668 4.138 100 1.137  24 666    20.2 396.9 37.97 13.8
+    ##     leverage
+    ## 1 0.02686517
 
 ## 3.6.3 Multiple Linear Regression
 
@@ -1347,7 +1347,12 @@ confint(reg_no_colin2)
     ## (Intercept) 1.666984 2.572828
     ## x2          2.373658 5.481029
 
-    As in d), in this case we can also reject the null hypothesis of the coefficient being equal to zero. However, the estimated value is much higher than it's true value (the true value is even outside the confidence interval). This may be because, since `x2` has been generated from `x1`, it's coefficient is picking up the relationship from both `x2` and `x1` (through their correlation) with the response variable.
+As in d), in this case we can also reject the null hypothesis of the
+coefficient being equal to zero. However, the estimated value is much
+higher than it’s true value (the true value is even outside the
+confidence interval). This may be because, since `x2` has been generated
+from `x1`, it’s coefficient is picking up the relationship from both
+`x2` and `x1` (through their correlation) with the response variable.
 
 f. Do the results obtained in (c)–(e) contradict each other? Explain
 your answer.
